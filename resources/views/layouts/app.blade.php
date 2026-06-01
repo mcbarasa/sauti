@@ -290,7 +290,7 @@ footer { background:var(--footer-bg); border-top:1px solid var(--border); paddin
     <li><a href="{{ route('home') }}#about">About</a></li>
     <li><a href="{{ route('home') }}#artists">Artists</a></li>
     <li><a href="{{ route('home') }}#contact">Contact</a></li>
-    <li><a href="{{ route('bookings.admin') }}">Admin</a></li>
+    {{-- <li><a href="{{ route('bookings.admin') }}">Admin</a></li> --}}
     <li>
       <button class="theme-toggle-btn" onclick="toggleTheme()" title="Toggle light / dark mode">
         <span class="tt-icon"></span>
@@ -313,7 +313,7 @@ footer { background:var(--footer-bg); border-top:1px solid var(--border); paddin
   <li><a href="{{ route('home') }}#about"    onclick="closeMobileMenu()">About</a></li>
   <li><a href="{{ route('home') }}#artists"  onclick="closeMobileMenu()">Artists</a></li>
   <li><a href="{{ route('home') }}#contact"  onclick="closeMobileMenu()">Contact</a></li>
-  <li><a href="{{ route('bookings.admin') }}" onclick="closeMobileMenu()">Admin</a></li>
+  {{-- <li><a href="{{ route('bookings.admin') }}" onclick="closeMobileMenu()">Admin</a></li> --}}
   <li class="theme-row">
     <label>Theme</label>
     <button class="theme-toggle-btn" onclick="toggleTheme()" title="Toggle light / dark mode">

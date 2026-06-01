@@ -91,7 +91,7 @@
         <span>Music Room 1 </span>   in this space we do editing that is both video and audio as well as a recording space for podcast and currently the home of Watumishi podcast
         </br>
         </br>
-        <span>Music Room 2 </span>  This is the main rehearsal space and here you will everything that you need for your session
+        <span>Music Room 2 </span>  This is the main rehearsal space and here you will find everything that you need for your session
         </p>
       </div>
 

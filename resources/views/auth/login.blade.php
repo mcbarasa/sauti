@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Admin Login — Sauti Gang Studio</title>
+<title>Admin Login</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;700&display=swap" rel="stylesheet"/>
 <style>
   :root { --y:#F5C518; --bg:#0A0A0A; --s1:#111; --s2:#171717; --s3:#202020; --border:rgba(255,255,255,0.07); --borderY:rgba(245,197,24,0.22); --txt:#F0F0F0; --txt3:#666; --red:#E55A5A; --r:6px; }
@@ -69,7 +69,7 @@
     <div class="form-group">
       <label>Email Address</label>
       <input type="email" name="email" value="{{ old('email') }}"
-             placeholder="admin@sautigang.studio" autofocus autocomplete="email"/>
+             placeholder="Enter email address" autofocus autocomplete="email"/>
       @error('email')<span class="input-error">{{ $message }}</span>@enderror
     </div>
 

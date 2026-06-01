@@ -1,5 +1,5 @@
 @extends('layouts.app')
-@section('title', 'Sauti Gang Studio — Nairobi\'s Premier Rehearsal Space')
+@section('title', 'Sauti Gang Studios')
 
 @section('content')
 
@@ -153,15 +153,15 @@
         <ul class="hours-list">
           <li>Monday – Friday <span>7:00 AM – 11:00 PM</span></li>
           <li>Saturday        <span>8:00 AM – 12:00 AM</span></li>
-          <li>Sunday          <span>10:00 AM – 10:00 PM</span></li>
-          <li>Night Shift          <span>Can contact Us so we can let you know</span></li>
+          <li>Sunday          <span>1:30 PM – 10:00 PM</span></li>
+          <li>Overnight Rehearsal           <span>Contact Us so will make it happen ASAP!.</span></li>
         </ul>
         <div style="margin-top:2rem;padding-top:1.5rem;border-top:1px solid var(--hours-border);">
           <h3 style="font-size:1.4rem;margin-bottom:0.75rem;">Rates</h3>
           <ul class="hours-list">
             <li>Rehearsal Room (per hour)  <span>KES 1,000</span></li>
-            <li>Recording Suite (per hour) <span>KES 2,00</span></li>
-            <li>Full Day Hire              <span>KES 10,000</span></li>
+            <li>Recording Suite (per hour) <span>KES 1,500</span></li>
+            <li>Full Day Hire (12 hour)             <span>KES 10,000</span></li>
             <li>Monthly Package            <span>Custom</span></li>
           </ul>
         </div>
@@ -366,7 +366,7 @@
 
         @foreach([
           ['📍', 'Location',          'Karen Village<br>Nairobi, Kenya'],
-          ['📞', 'Phone / WhatsApp',  '+254 733 590 438'],
+          ['📞', 'Phone / WhatsApp',  '+254 733 590 438 / +254 112 935 073'],
           ['✉️', 'Email',             'hey@sautigang.studio'],
         ] as $c)
         <div style="display:flex;gap:1rem;margin-bottom:1.5rem;align-items:flex-start;">

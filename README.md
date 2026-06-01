@@ -1,58 +1,129 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Deployment does in Opalstack
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+## Step 1: ssh into Opalstack
+    ssh yourusername@servername/Ip
 
-## About Laravel
+## Step 2: Check PHP version
+    cd ~
+    php -v
+    which php -> make sure it is PHP v8.1+ and if you need a specific version opalstack lets you select your preferred one
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Step 3-5: Install composer correctly and verify that it works
+    cd ~
+    curl -sS https://getcomposer.org/installer | php -> This creates ~/composer.phar and now move it to  your personal bin
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+    mkdir -p ~/bin
+    mv ~/composer.phar ~/bin/composer
+    chmod +x ~/bin/composer
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+    Add ~/bin to your   PATH permanently
+    echo 'export PATH="HOME/bin:$PATH"' >> ~/.bashrc
+    source ~/.bashrc
+    composr -v
 
-## Learning Laravel
+## Step 6: Upload your laravel project(Terminal)
+    Path: /home/username/
+    First create an app in the opalstack dashboard 
+    git clone <git repository>
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+## Step 7: install dependancies
+    cd to your project folder
+    composer install --no-dev --optimize-autoloader
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## Step 8: Set up your .env
+    Path: /home/username/projectname
+    cp .env.example .env
+    nano .env {Note: set and replace the values accordingly}
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
+## Step 9: Generate the app key
+    Path: /home/username/projectname
+    php artisan key:generate
 
-## Agentic Development
+## Step 10: Set permissions
+    Path: /home/username/projectname
+    chmod -R 775 storage bootstrap/cache
+    chown -R $USER:$USER storage bootstrap/cache
 
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+## Step 11: Run Migrations
+    php artisan migrate --force
+    php artisan migrate:fresh --force ->To wipe and run migrations afresh
 
-```bash
-composer require laravel/boost --dev
+## Step 12: Point web root to /public 
+    Go to Apps-> your app-> settings and find it then set the root path to /home/youruser/apps/yourappname/public
 
-php artisan boost:install
-```
+## Step 13: Verity the .htaccess exists
+    path: ~/apps/yourproject/public
+    cat ~/apps/yourproject/public/.htaccess
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+## Step 14: cache everything for production
+    /home/youruser/yourproject
+    php artisan config:cache
+    php artisan route:cache
+    php artisan view:cache
 
-## Contributing
+## Step 15: Link your domain in opalstack panel
+    Domains-> Add/Edit Domain and assign it to your app and if using https enable ssl certificate from the panel too
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+# Database Seeder
+## Step 1: Run the seeder class directly
+    Path: /home/username/projectname
+    /usr/bin/php83 artisan db:seed --class=AdminSeeder
 
-## Code of Conduct
+## Step 2: If it fails user tinker on the server
+    /usr/bin/php83 artisan tinker
+    then
+    \App\Models\User::create([
+    'name' => 'Admin',
+    'email' => 'admin email address',
+    'password' => bcrypt('password'),
+    'role' => 'admin',
+]);
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+## Step 3: Check if seeder already ran 
+    /usr/bin/php83 artisan tinker --execute="echo \App\Models\User::where('email','admin email')->exists() ? 'EXISTS' : 'NOT FOUND';"
 
-## Security Vulnerabilities
+## Step 4: Re-run all seeders
+    /usr/bin/php83 artisan db:seed --force
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
 
-## License
+# Making updates and Upgrades
+Since we deployed from a git repository
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+## Step 1: Make changes locally - push to Github
+    From vs/ any editor
+    git add .
+    git commit -m "updates on whatever either views, .env, db {any message}"
+    git push origin main
+
+## Step 2: SSH into the server
+    ssh username@servername/ip
+
+## Step 3: Pull the latest changes
+    cd /home/username/project/
+    git pull origin main
+
+## Step 4: Run these based on what you changed
+    If PHP -> /usr/bin/php83 ~/bin/composer install --no-dev --optimize-autoloader
+    Migrations -> /usr/bin/php83 artisan migrate --force
+    Seeders -> /usr/bin/php83 artisan db:seed --force
+    .env
+        nano .env
+### make your edits, then:
+        /usr/bin/php83 artisan config:clear
+        /usr/bin/php83 artisan config:cache
+    Routes
+        /usr/bin/php83 artisan route:clear
+        /usr/bin/php83 artisan route:cache
+    Blade Views
+        /usr/bin/php83 artisan view:clear
+        /usr/bin/php83 artisan view:cache
+
+# Quickest and safety way (Combined)
+        Cd /home/username/projectfolder && \
+        git pull origin main && \
+        /usr/bin/php83 ~/bin/composer install --no-dev --optimize-autoloader && \
+        /usr/bin/php83 artisan migrate --force && \
+        /usr/bin/php83 artisan cache:clear && \
+        /usr/bin/php83 artisan config:cache && \
+        /usr/bin/php83 artisan route:cache && \
+        /usr/bin/php83 artisan view:cache
