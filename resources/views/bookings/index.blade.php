@@ -170,9 +170,22 @@
       <!-- Form side -->
       <div class="booking-form">
 
-        @if ($errors->has('slot'))
-          <div class="error-banner">{{ $errors->first('slot') }}</div>
-        @endif
+        {{-- ── General errors (payment, validation, etc.) ── --}}
+@if ($errors->any())
+  <div class="error-banner">
+    <strong>Please fix the following:</strong><br>
+    <ul style="margin-top:0.4rem;padding-left:1.2rem;">
+      @foreach ($errors->all() as $error)
+        <li>{{ $error }}</li>
+      @endforeach
+    </ul>
+  </div>
+@endif
+
+{{-- ── Slot-specific error ── --}}
+@if ($errors->has('slot'))
+  <div class="error-banner">{{ $errors->first('slot') }}</div>
+@endif
 
         <form id="bookingForm" action="{{ route('bookings.initiate') }}" method="POST" novalidate>
           @csrf

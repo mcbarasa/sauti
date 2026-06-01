@@ -1,5 +1,5 @@
 @extends('layouts.app')
-@section('title', 'Book a Session — Sauti Gang Studio')
+@section('title', 'Book a Session')
 
 @section('content')
 <section id="booking" style="padding-top:8rem;">
@@ -37,7 +37,8 @@
 
       <!-- Booking form -->
       <div class="booking-form">
-        @if ($errors->any())
+        {{-- ── General errors (payment, validation, etc.) ── --}}
+@if ($errors->any())
   <div class="error-banner">
     <strong>Please fix the following:</strong><br>
     <ul style="margin-top:0.4rem;padding-left:1.2rem;">
@@ -46,6 +47,11 @@
       @endforeach
     </ul>
   </div>
+@endif
+
+{{-- ── Slot-specific error ── --}}
+@if ($errors->has('slot'))
+  <div class="error-banner">{{ $errors->first('slot') }}</div>
 @endif
 
         <form id="bookingForm" action="{{ route('bookings.initiate') }}" method="POST" novalidate>
