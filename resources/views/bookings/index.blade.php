@@ -252,7 +252,7 @@
           </div>
 
           <div class="form-group">
-    <label>Phone / WhatsApp</label>
+    <label>Phone</label>
     <div style="display:flex;align-items:center;background:var(--surface2);border:1px solid var(--border);border-radius:4px;overflow:hidden;">
         <span style="padding:0 0.75rem;color:var(--yellow);font-weight:600;font-size:0.95rem;border-right:1px solid var(--border);height:100%;display:flex;align-items:center;white-space:nowrap;user-select:none;">+254</span>
         <input type="tel"
