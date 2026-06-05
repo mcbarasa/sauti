@@ -436,7 +436,7 @@ public function checkout(Booking $booking)
 
     $isOvertime   = $now->gt($sessionEnd);
     $overtimeMins = $isOvertime ? (int) $sessionEnd->diffInMinutes($now) : 0;
-    $overtimeCost = $isOvertime ? (int) round($overtimeMins * (1000 / 60)) : 0;
+    $overtimeCost = $isOvertime ? (int) round($overtimeMins * (700 / 60)) : 0;
 
     // ── Overtime STK Push ─────────────────────────────────────────────
     if ($isOvertime && $overtimeCost > 0) {

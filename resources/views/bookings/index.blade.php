@@ -159,9 +159,9 @@
         <div style="margin-top:2rem;padding-top:1.5rem;border-top:1px solid var(--hours-border);">
           <h3 style="font-size:1.4rem;margin-bottom:0.75rem;">Rates</h3>
           <ul class="hours-list">
-            <li>Rehearsal Room (per hour)  <span>KES 1,000</span></li>
-            <li>Recording Suite (per hour) <span>KES 1,500</span></li>
-            <li>Full Day Hire (12 hour)             <span>KES 10,000</span></li>
+            <li>Rehearsal Room (per hour)  <span>KES 700</span></li>
+            <li>Recording Suite (per hour) <span>KES 1,00</span></li>
+            <li>Full Day Hire (12 hour)             <span>KES 8,000</span></li>
             <li>Monthly Package            <span>Custom</span></li>
           </ul>
         </div>
@@ -643,7 +643,7 @@ document.getElementById('roomSelect').onchange = () => {
 document.getElementById('startTime').onchange  = checkClash;
 
 // ── Auto-compute amount ──────────────────────────────────────────────
-const rates = { '1': 1, '2': 2000, '3': 3000, '4': 4000, 'full': 10000 };
+const rates = { '1': 1, '2': 1400, '3': 2100, '4': 2800, 'full': 8000 };
 
 function computeAmount() {
   const duration = document.querySelector('select[name="duration"]').value;

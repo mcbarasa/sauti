@@ -130,14 +130,14 @@ public function recurringGroup()
     }
 
     // Hourly rate
-const HOURLY_RATE = 1000;
+const HOURLY_RATE = 700;
 
 public static array $rates = [
     '1'    => 1,   
-    '2'    => 2000,   
-    '3'    => 3000,   
-    '4'    => 4000,   
-    'full' => 10000,   // flat full-day rate
+    '2'    => 1400,   
+    '3'    => 2100,   
+    '4'    => 2800,   
+    'full' => 8000,   // flat full-day rate
 ];
 
 public static function computeAmount(string $duration): float
@@ -151,17 +151,17 @@ public function getFormattedAmountAttribute(): string
 }
 
 // Hourly rate for overtime
-const OVERTIME_RATE_PER_MINUTE = 1000 / 60; // KES 1000 per hour
+const OVERTIME_RATE_PER_MINUTE = 700 / 60; // KES 1000 per hour
 
 // Get duration in minutes
 public function getDurationMinutesAttribute(): int
 {
     return match($this->duration) {
-        '1'    => 60,
-        '2'    => 120,
-        '3'    => 180,
-        '4'    => 240,
-        'full' => 720,
+        '1'    => 10,
+        '2'    => 20,
+        '3'    => 30,
+        '4'    => 40,
+        'full' => 700,
     };
 }
 
@@ -198,7 +198,7 @@ public function getOvertimeCostAttribute(): float
     if ($now->lte($this->session_end)) return 0;
 
     $overtimeMinutes = $now->diffInMinutes($this->session_end);
-    return round($overtimeMinutes * (1000 / 60));
+    return round($overtimeMinutes * (700 / 60));
 }
 //checkout
 

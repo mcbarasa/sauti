@@ -324,7 +324,7 @@ document.getElementById('roomSelect').onchange = () => {
 
 
 // ── Auto-compute amount ──────────────────────────────────────────────
-const rates = { '1': 1000, '2': 2000, '3': 3000, '4': 4000, 'full': 10000 };
+const rates = { '1': 700, '2': 1400, '3': 2100, '4': 2800, 'full': 8000 };
 
 function computeAmount() {
     const duration = document.querySelector('select[name="duration"]').value;
