@@ -24,7 +24,7 @@
         <div style="margin-top:2rem;padding-top:1.5rem;border-top:1px solid var(--hours-border);">
           <h3 style="font-size:1.4rem;margin-bottom:0.75rem;">Rates</h3>
           <ul class="hours-list">
-            <li>Rehearsal Room (2hr block) <span>KES 7000</span></li>
+            <li>Rehearsal Room (2hr block) <span>KES 700</span></li>
             <li>Recording Suite (per hour) <span>KES 1,000</span></li>
             <li>Full Day Hire <span>KES 8,000</span></li>
             <li>Monthly Package <span>Custom</span></li>
