@@ -252,13 +252,23 @@
           </div>
 
           <div class="form-group">
-            <label>Phone / WhatsApp</label>
-            <input type="tel" name="phone" placeholder="+254 7XX XXX XXX"
-                   value="{{ old('phone') }}" inputmode="numeric"
-                   onkeypress="return /[0-9+\s]/.test(event.key)"
-                   oninput="this.value = this.value.replace(/[^0-9+\s]/g, '')" />
-            @error('phone')<span class="input-error">{{ $message }}</span>@enderror
-          </div>
+    <label>Phone / WhatsApp</label>
+    <div style="display:flex;align-items:center;background:var(--surface2);border:1px solid var(--border);border-radius:4px;overflow:hidden;">
+        <span style="padding:0 0.75rem;color:var(--yellow);font-weight:600;font-size:0.95rem;border-right:1px solid var(--border);height:100%;display:flex;align-items:center;white-space:nowrap;user-select:none;">+254</span>
+        <input type="tel"
+               id="phoneInput"
+               maxlength="9"
+               placeholder="7XX XXX XXX"
+               style="border:none;background:transparent;flex:1;padding:0.75rem;outline:none;"
+               value="{{ old('phone') ? preg_replace('/^\+?254|^0/', '', old('phone')) : '' }}"
+               inputmode="numeric"
+               oninput="this.value = this.value.replace(/^0+/, '').replace(/[^0-9]/g, '').substring(0, 9)"
+        />
+    </div>
+    <input type="hidden" name="phone" id="phoneHidden"
+           value="{{ old('phone') ?: '' }}" />
+    @error('phone')<span class="input-error">{{ $message }}</span>@enderror
+</div>
 
           <div class="form-group">
             <label>Amount (KES)</label>
@@ -827,5 +837,10 @@ async function previewRecurring() {
     btn.disabled    = false;
   }
 }
+// ── Phone field: prefix +254 and strip leading zero ──────────────────
+document.getElementById('bookingForm').addEventListener('submit', function () {
+    const local = document.getElementById('phoneInput').value.replace(/^0+/, '').replace(/[^0-9]/g, '');
+    document.getElementById('phoneHidden').value = '254' + local;
+});
 </script>
 @endpush
