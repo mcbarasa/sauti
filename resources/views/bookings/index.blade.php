@@ -419,7 +419,7 @@
 
       <!-- Map -->
       <div class="contact-map" style="border-radius:4px;overflow:hidden;border:1px solid var(--border-y);height:380px;box-shadow:var(--shadow);">
-        <iframe src="https://www.google.com/maps?q=Karen+Village+Nairobi&output=embed"
+        <iframe src="https://www.google.com/maps?q=/Sauti+Gang+Studios&output=embed"
                 style="width:100%;height:100%;border:none;filter:var(--map-filter);"
                 allowfullscreen loading="lazy"></iframe>
       </div>
