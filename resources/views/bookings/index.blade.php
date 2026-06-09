@@ -390,7 +390,7 @@
         @foreach([
           ['📍', 'Location',          'Karen Village<br>Nairobi, Kenya'],
           ['📞', 'Phone / WhatsApp',  '+254 733 590 438 / +254 112 935 073'],
-          ['✉️', 'Email',             'hey@sautigang.studio'],
+          ['✉️', 'Email',             'hey@sautigang.com'],
         ] as $c)
         <div style="display:flex;gap:1rem;margin-bottom:1.5rem;align-items:flex-start;">
           <div style="width:40px;height:40px;background:var(--yellow-bg);border:1px solid var(--border-y);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">{{ $c[0] }}</div>
