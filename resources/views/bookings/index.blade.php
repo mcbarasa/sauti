@@ -80,6 +80,9 @@
   }
   .booking-wrap  { grid-template-columns:1fr; gap:2.5rem; }
 }
+#pay{
+  color: brown;
+}
 
 /* ── Mobile ── */
 @media (max-width:600px) {
@@ -163,6 +166,7 @@
             <li>Recording Suite (per hour) <span>KES 1,00</span></li>
             <li>Full Day Hire (12 hour)             <span>KES 8,000</span></li>
             <li>Monthly Package            <span>Custom</span></li>
+            <li>Payment:<span id="pay">   The amount listed below is the deposit and we recommend clearing the balance after your session</span></li>
           </ul>
         </div>
       </div>
@@ -271,7 +275,7 @@
 </div>
 
           <div class="form-group">
-            <label>Amount (KES)</label>
+            <label>Deposited Amount (KES)</label>
             <input type="text" id="amountDisplay" readonly
                    style="cursor:default;color:var(--yellow);font-weight:700;font-size:1.05rem;"
                    placeholder="Select duration to calculate" />
@@ -643,7 +647,7 @@ document.getElementById('roomSelect').onchange = () => {
 document.getElementById('startTime').onchange  = checkClash;
 
 // ── Auto-compute amount ──────────────────────────────────────────────
-const rates = { '1': 1, '2': 1400, '3': 2100, '4': 2800, 'full': 8000 };
+const rates = { '1': 1, '2': 700, '3': 1050, '4': 1400, 'full': 4000 };
 
 function computeAmount() {
   const duration = document.querySelector('select[name="duration"]').value;

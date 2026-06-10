@@ -134,10 +134,10 @@ const HOURLY_RATE = 700;
 
 public static array $rates = [
     '1'    => 1,   
-    '2'    => 1400,   
-    '3'    => 2100,   
-    '4'    => 2800,   
-    'full' => 8000,   // flat full-day rate
+    '2'    => 700,   
+    '3'    => 1050,   
+    '4'    => 1400,   
+    'full' => 4000,   // flat full-day rate
 ];
 
 public static function computeAmount(string $duration): float

@@ -48,6 +48,12 @@
     php artisan migrate --force
     php artisan migrate:fresh --force ->To wipe and run migrations afresh
 
+    -> in case you run into the error {Already exists} fix using the command below
+        php artisan tinker --execute="DB::table('migrations')->insert(['migration' => '2026_05_11_123034_add_room_to_bookings_table', 'batch' => 1]);"
+        
+        then re-run
+        php artisan migrate
+
 ## Step 12: Point web root to /public 
     Go to Apps-> your app-> settings and find it then set the root path to /home/youruser/apps/yourappname/public
 
@@ -78,6 +84,7 @@
     'password' => bcrypt('password'),
     'role' => 'admin',
 ]);
+    Note: Make sure it is the email that you included in your .env file
 
 ## Step 3: Check if seeder already ran 
     /usr/bin/php83 artisan tinker --execute="echo \App\Models\User::where('email','admin email')->exists() ? 'EXISTS' : 'NOT FOUND';"

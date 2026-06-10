@@ -1,6 +1,10 @@
 @extends('layouts.app')
 @section('title', 'Book a Session')
-
+<style>
+#pay{
+  color: brown;
+}
+</style>
 @section('content')
 <section id="booking" style="padding-top:8rem;">
   <div class="container">
@@ -28,6 +32,7 @@
             <li>Recording Suite (per hour) <span>KES 1,000</span></li>
             <li>Full Day Hire <span>KES 8,000</span></li>
             <li>Monthly Package <span>Custom</span></li>
+            <li>Payment:<span id="pay">   The amount listed below is the deposit and we recommend clearing the balance after your session</span></li>
           </ul>
         </div>
         <div style="margin-top:2rem;">
@@ -135,7 +140,7 @@
     @error('phone')<span class="input-error">{{ $message }}</span>@enderror
 </div>
           <div class="form-group" style="margin-top:0.5rem;">
-    <label>Amount (KES)</label>
+    <label>Deposited Amount (KES)</label>
     <input type="text" id="amountDisplay" readonly
         style="cursor:default; color:var(--yellow); font-weight:700; font-size:1.05rem;"
         placeholder="Select duration to calculate" />
@@ -324,7 +329,7 @@ document.getElementById('roomSelect').onchange = () => {
 
 
 // ── Auto-compute amount ──────────────────────────────────────────────
-const rates = { '1': 700, '2': 1400, '3': 2100, '4': 2800, 'full': 8000 };
+const rates = { '1': 350, '2': 700, '3': 1050, '4': 1400, 'full': 4000 };
 
 function computeAmount() {
     const duration = document.querySelector('select[name="duration"]').value;
