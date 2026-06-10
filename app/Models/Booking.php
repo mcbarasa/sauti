@@ -157,11 +157,11 @@ const OVERTIME_RATE_PER_MINUTE = 700 / 60; // KES 1000 per hour
 public function getDurationMinutesAttribute(): int
 {
     return match($this->duration) {
-        '1'    => 10,
-        '2'    => 20,
-        '3'    => 30,
-        '4'    => 40,
-        'full' => 700,
+        '1'    => 60,
+        '2'    => 120,
+        '3'    => 180,
+        '4'    => 240,
+        'full' => 6600,
     };
 }
 
