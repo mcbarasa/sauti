@@ -62,18 +62,18 @@
     <!-- Image mosaic -->
     <div class="sg-mosaic">
       <div class="sg-img big">
-        <img src="{{ asset('img/photo5.WebP') }}" alt="" style="width:100%;height:100%;object-fit:cover;display:block" onerror="this.style.display='none'">
+        <img src="{{ asset('img/suit.jpeg') }}" alt="" style="width:100%;height:100%;object-fit:cover;display:block" onerror="this.style.display='none'">
         <div class="sg-img-inner" style="position:absolute;inset:0;background:var(--color-background-secondary)"><i class="ti ti-microphone-2" style="font-size:3rem;color:#EF9F27;opacity:0.4"></i></div>
         <span class="sg-badge">Main Studio</span>
         <div class="sg-img-label">Rehearsal Suite </div>
       </div>
       <div class="sg-img">
-        <img src="{{ asset('img/photo14.WebP') }}" alt="" style="width:100%;height:100%;object-fit:cover;display:block" onerror="this.style.display='none'">
+        <img src="{{ asset('img/drums.jpeg') }}" alt="" style="width:100%;height:100%;object-fit:cover;display:block" onerror="this.style.display='none'">
         <div class="sg-img-inner" style="background:var(--color-background-primary)"><i class="ti ti-guitar-pick" style="font-size:2rem;color:#EF9F27;opacity:0.35"></i></div>
         <div class="sg-img-label">Bass</div>
       </div>
       <div class="sg-img" style="grid-column:3/4;grid-row:2/3">
-        <img src="{{ asset('img/photo12.WebP') }}" alt="" style="width:100%;height:100%;object-fit:cover;display:block" onerror="this.style.display='none'">
+        <img src="{{ asset('img/bass.jpeg') }}" alt="" style="width:100%;height:100%;object-fit:cover;display:block" onerror="this.style.display='none'">
         <div class="sg-img-inner" style="background:var(--color-background-primary)"><i class="ti ti-bulb" style="font-size:2rem;color:#EF9F27;opacity:0.35"></i></div>
         <div class="sg-img-label">Keys</div>
       </div>
