@@ -19,7 +19,7 @@ class StoreBookingRequest extends FormRequest
         'phone'                => ['required', 'string', 'regex:/^[0-9+\s]+$/', 'min:10', 'max:15'],
         'booking_date'         => ['required', 'date', 'after_or_equal:today'],
         'room'                 => ['required', Rule::in(array_keys(\App\Models\Booking::$rooms))],
-        'start_time'           => ['required', Rule::in(\App\Models\Booking::$timeSlots)],
+        // 'start_time'           => ['required', Rule::in(\App\Models\Booking::$timeSlots)],
         'duration'             => ['required', Rule::in(array_keys(\App\Models\Booking::$durations))],
         'notes'                => ['nullable', 'string', 'max:600'],
         'amount'               => ['required', 'numeric', 'min:0'],
@@ -41,6 +41,21 @@ class StoreBookingRequest extends FormRequest
                 ['nullable']
             )
         ],
+        'start_time' => [
+    'required',
+    Rule::in(\App\Models\Booking::$timeSlots),
+    function($attribute, $value, $fail) {
+        $date    = request('booking_date');
+        if (!$date) return;
+
+        $dayOfWeek = \Carbon\Carbon::parse($date)->dayOfWeek; // 0 = Sunday
+        $hour      = (int) substr($value, 0, 2);
+
+        if ($dayOfWeek === 0 && ($hour < 14 || $hour >= 21)) {
+            $fail('On Sundays, bookings are only available between 2:00 PM and 9:00 PM.');
+        }
+    },
+],
     ];
 }
 

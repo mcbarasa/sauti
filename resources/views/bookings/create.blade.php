@@ -22,7 +22,7 @@
         <ul class="hours-list">
           <li>Monday – Friday <span>7:00 AM – 10:00 PM</span></li>
           <li>Saturday <span>8:00 AM – 11:00 PM</span></li>
-          <li>Sunday <span>01:00 PM – 10:00 PM</span></li>
+          <li>Sunday <span>02:00 PM – 09:00 PM</span></li>
           <li>Night Shift          <span>Can contact us and will let you know</span></li>
         </ul>
         <div style="margin-top:2rem;padding-top:1.5rem;border-top:1px solid var(--hours-border);">
@@ -367,12 +367,25 @@ function filterTimeSlots(selectedDateStr) {
 
   const room = document.getElementById('roomSelect').value;
 
+    // ── Sunday restricted hours: 14:00 – 20:00 only (last start = 20:00 if 1hr) ──
+  const dateObj  = new Date(slotYear, slotMon - 1, slotDay);
+  const isSunday = dateObj.getDay() === 0;
+
   if (hint) hint.style.display = isToday ? 'block' : 'none';
 
-  options.forEach(opt => {
+options.forEach(opt => {
     if (!opt.value) return;
 
     const slotHour = parseInt(opt.value.split(':')[0], 10);
+
+    // ── Sunday: only 14:00–21:00 allowed, others hidden completely ──
+    if (isSunday && (slotHour < 14 || slotHour > 21)) {
+      opt.style.display = 'none';
+      opt.disabled       = true;
+      return;
+    } else {
+      opt.style.display = '';
+    }
 
     // Key format: "2026-5-24-room-a-09:00"
     const slotKey  = `${dateKey}-${room}-${opt.value.substring(0, 5)}`;

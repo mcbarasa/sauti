@@ -156,7 +156,7 @@
         <ul class="hours-list">
           <li>Monday – Friday <span>7:00 AM – 11:00 PM</span></li>
           <li>Saturday        <span>8:00 AM – 12:00 AM</span></li>
-          <li>Sunday          <span>1:30 PM – 10:00 PM</span></li>
+          <li>Sunday <span>02:00 PM – 09:00 PM</span></li>
           <li>Overnight Rehearsal           <span>Contact Us so will make it happen ASAP!.</span></li>
         </ul>
         <div style="margin-top:2rem;padding-top:1.5rem;border-top:1px solid var(--hours-border);">
@@ -228,7 +228,7 @@
 
           <div class="form-row">
             <div class="form-group">
-              <label>Start Time</label>
+              <label>Start Time</label> 
               <select name="start_time" id="startTime">
                 <option value="">Start time</option>
                 @foreach($timeSlots as $slot)
@@ -546,40 +546,61 @@ function filterTimeSlots(selectedDateStr) {
   const isToday   = selectedDateStr === todayStr;
   const currentHr = now.getHours();
 
-  // Key format confirmed: YYYY-M-D (1-indexed month, no leading zeros)
   const parts    = selectedDateStr.split('-');
   const dateKey  = `${parseInt(parts[0])}-${parseInt(parts[1])}-${parseInt(parts[2])}`;
   const room     = document.getElementById('roomSelect').value;
 
+  // ── Check if selected date is a Sunday ───────────────────────────
+  const selectedDateObj = new Date(selectedDateStr);
+  const isSunday        = selectedDateObj.getDay() === 0;
+
+  // Show Sunday notice
+const sundayNotice = document.getElementById('sunday-notice');
+if (sundayNotice) sundayNotice.style.display = isSunday ? 'block' : 'none';
+
   if (hint) hint.style.display = isToday ? 'block' : 'none';
 
   options.forEach(opt => {
-    if (!opt.value) return;
+    if (!opt.value) return; // skip placeholder
 
     const slotHour = parseInt(opt.value.split(':')[0], 10);
     const slotKey  = `${dateKey}-${room}-${opt.value.substring(0, 5)}`;
     const isPast   = isToday && slotHour <= currentHr;
     const isBooked = room && bookedSlots[slotKey] === true;
 
-    if (isPast) {
+    // ── Sunday rule: only 14:00 – 21:00 allowed ──────────────────
+    const isClosedSunday = isSunday && (slotHour < 14 || slotHour >= 21);
+
+    if (isClosedSunday) {
+      // Hide completely on Sundays outside operating hours
       opt.disabled         = true;
+      opt.style.display    = 'none';
+      opt.style.color      = '#555';
+      opt.style.background = '#1a1a1a';
+      opt.textContent      = opt.value.substring(0, 5) + ' — closed';
+    } else if (isPast) {
+      opt.disabled         = true;
+      opt.style.display    = '';
       opt.style.color      = '#555';
       opt.style.background = '#1a1a1a';
       opt.textContent      = opt.value.substring(0, 5) + ' — passed';
     } else if (isBooked) {
       opt.disabled         = true;
+      opt.style.display    = '';
       opt.style.color      = '#E55A5A';
       opt.style.background = 'rgba(229,90,90,0.08)';
       opt.textContent      = opt.value.substring(0, 5) + ' — booked';
     } else {
+      // Available
       opt.disabled         = false;
+      opt.style.display    = '';
       opt.style.color      = '';
       opt.style.background = '';
       opt.textContent      = opt.value.substring(0, 5);
     }
   });
 
-  // Reset if selected slot became disabled
+  // Reset selection if currently selected slot is now disabled
   if (select.value && select.options[select.selectedIndex]?.disabled) {
     select.value = '';
   }
@@ -647,7 +668,7 @@ document.getElementById('roomSelect').onchange = () => {
 document.getElementById('startTime').onchange  = checkClash;
 
 // ── Auto-compute amount ──────────────────────────────────────────────
-const rates = { '1': 350, '2': 700, '3': 1050, '4': 1400, 'full': 4000 };
+const rates = { '1':350, '2': 700, '3': 1050, '4': 1400, 'full': 4000 };
 
 function computeAmount() {
   const duration = document.querySelector('select[name="duration"]').value;
