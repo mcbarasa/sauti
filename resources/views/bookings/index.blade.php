@@ -647,7 +647,7 @@ document.getElementById('roomSelect').onchange = () => {
 document.getElementById('startTime').onchange  = checkClash;
 
 // ── Auto-compute amount ──────────────────────────────────────────────
-const rates = { '1': 1, '2': 700, '3': 1050, '4': 1400, 'full': 4000 };
+const rates = { '1': 350, '2': 700, '3': 1050, '4': 1400, 'full': 4000 };
 
 function computeAmount() {
   const duration = document.querySelector('select[name="duration"]').value;

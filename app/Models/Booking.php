@@ -133,7 +133,7 @@ public function recurringGroup()
 const HOURLY_RATE = 700;
 
 public static array $rates = [
-    '1'    => 1,   
+    '1'    => 350,   
     '2'    => 700,   
     '3'    => 1050,   
     '4'    => 1400,   
