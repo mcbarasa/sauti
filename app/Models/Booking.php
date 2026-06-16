@@ -33,6 +33,21 @@ class Booking extends Model
         'checked_out_at' => 'datetime',
     ];
 
+    public static array $durations = [
+    '1'  => '1 Hour',
+    '2'  => '2 Hours',
+    '3'  => '3 Hours',
+    '4'  => '4 Hours',
+    '5'  => '5 Hours',
+    '6'  => '6 Hours',
+    '7'  => '7 Hours',
+    '8'  => '8 Hours',
+    '9'  => '9 Hours',
+    '10' => '10 Hours',
+    '11' => '11 Hours',
+    '12' => '12 Hours (Full Day)',
+];
+
     // ─── Room labels ────────────────────────────────────────────────────
     public static array $rooms = [
         'room-a' => 'Rehearsal –  (Band)',
@@ -42,14 +57,6 @@ class Booking extends Model
         'room-e' => 'Room 1 – Podcast/Production',
     ];
 
-    // ─── Duration labels ────────────────────────────────────────────────
-    public static array $durations = [
-        '1'    => '1 Hours',
-        '2'    => '2 Hours',
-        '3'    => '3 Hours',
-        '4'    => '4 Hours',
-        'full' => 'Full Day',
-    ];
 
     // ─── Time slots ─────────────────────────────────────────────────────
     public static array $timeSlots = [
@@ -65,9 +72,10 @@ class Booking extends Model
     }
 
     public function getDurationLabelAttribute(): string
-    {
-        return static::$durations[$this->duration] ?? $this->duration;
-    }
+{
+    $hours = intval($this->duration);
+    return $hours === 12 ? '12 Hours (Full Day)' : $hours . ($hours === 1 ? ' Hour' : ' Hours');
+}
 
     public function getFormattedDateAttribute(): string
     {
@@ -130,19 +138,12 @@ public function recurringGroup()
     }
 
     // Hourly rate
-const HOURLY_RATE = 700;
+const DEPOSIT_RATE_PER_HOUR = 350;
 
-public static array $rates = [
-    '1'    => 350,   
-    '2'    => 700,   
-    '3'    => 1050,   
-    '4'    => 1400,   
-    'full' => 4000,   // flat full-day rate
-];
-
-public static function computeAmount(string $duration): float
+public static function computeAmount(int|string $duration): float
 {
-    return static::$rates[$duration] ?? 0;
+    $hours = intval($duration);
+    return $hours >= 1 ? $hours * self::DEPOSIT_RATE_PER_HOUR : 0;
 }
 
 public function getFormattedAmountAttribute(): string
@@ -156,13 +157,8 @@ const OVERTIME_RATE_PER_MINUTE = 700 / 60; // KES 1000 per hour
 // Get duration in minutes
 public function getDurationMinutesAttribute(): int
 {
-    return match($this->duration) {
-        '1'    => 60,
-        '2'    => 120,
-        '3'    => 180,
-        '4'    => 240,
-        'full' => 6600,
-    };
+    $hours = intval($this->duration);
+    return $hours >= 1 ? $hours * 60 : 60;
 }
 
 // Get session start as Carbon datetime

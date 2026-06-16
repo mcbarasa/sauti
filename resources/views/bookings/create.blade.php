@@ -4,6 +4,18 @@
 #pay{
   color: brown;
 }
+
+@keyframes pulse-info {
+  0%,100% { box-shadow:0 0 0 0 rgba(245,197,24,0.5); }
+  50%      { box-shadow:0 0 0 5px rgba(245,197,24,0); }
+}
+@keyframes slideUp {
+  from { opacity:0; transform:translateY(20px) scale(0.97); }
+  to   { opacity:1; transform:translateY(0)    scale(1); }
+}
+
+/* Hover highlight on the recording suite row */
+li:has(#recording-suite-row) { transition:background 0.2s; }
 </style>
 @section('content')
 <section id="booking" style="padding-top:8rem;">
@@ -26,15 +38,147 @@
           <li>Night Shift          <span>Can contact us and will let you know</span></li>
         </ul>
         <div style="margin-top:2rem;padding-top:1.5rem;border-top:1px solid var(--hours-border);">
-          <h3 style="font-size:1.4rem;margin-bottom:0.75rem;">Rates</h3>
-          <ul class="hours-list">
-            <li>Rehearsal Room (2hr block) <span>KES 700</span></li>
-            <li>Recording Suite (per hour) <span>KES 1,000</span></li>
-            <li>Full Day Hire <span>KES 8,000</span></li>
-            <li>Monthly Package <span>Custom</span></li>
-            <li>Payment:<span id="pay">   The amount listed below is the deposit and we recommend clearing the balance after your session</span></li>
-          </ul>
+  <h3 style="font-size:1.4rem;margin-bottom:0.75rem;">Rates</h3>
+  <ul class="hours-list">
+    <li>Rehearsal Room (per hour) <span>KES 700</span></li>
+
+    {{-- ── Recording Suite — clickable with info popup ── --}}
+    <li style="cursor:pointer;position:relative;" onclick="showRecordingInfo()"
+        title="Click to learn more">
+      <span style="display:flex;align-items:center;gap:0.5rem;">
+        Recording Suite (per hour)
+        <span style="display:inline-flex;align-items:center;justify-content:center;
+                     width:16px;height:16px;border-radius:50%;
+                     background:var(--yellow);color:#0A0A0A;
+                     font-size:0.65rem;font-weight:900;flex-shrink:0;
+                     animation:pulse-info 2s infinite;">?</span>
+      </span>
+      <span style="color:var(--yellow);font-weight:700;text-decoration:underline;
+                   text-underline-offset:3px;text-decoration-style:dotted;">
+        KES 3,000
+        <span style="font-size:0.65rem;font-weight:500;color:var(--gray);
+                     text-decoration:none;display:block;margin-top:1px;">
+          tap to see what's included
+        </span>
+      </span>
+    </li>
+
+    <li>Full Day Hire (12 hours) <span>KES 8,000</span></li>
+    <li>Monthly Package          <span>Custom</span></li>
+    <li>Payment:
+      <span id="pay">
+        The amount listed below is the deposit and we recommend clearing the balance after your session
+      </span>
+    </li>
+  </ul>
+</div>
+
+{{-- ── Recording Suite Info Modal ── --}}
+<div id="recording-modal"
+     style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.82);
+            backdrop-filter:blur(6px);z-index:2000;
+            align-items:center;justify-content:center;padding:1rem;">
+
+  <div style="background:var(--surface);border:1px solid var(--border-y);
+              border-radius:10px;max-width:480px;width:100%;
+              box-shadow:0 24px 64px rgba(0,0,0,0.5);
+              animation:slideUp 0.3s cubic-bezier(0.34,1.56,0.64,1);">
+
+    {{-- Header --}}
+    <div style="background:linear-gradient(135deg,#1a1400,#0A0A0A);
+                border-bottom:1px solid var(--border-y);border-radius:10px 10px 0 0;
+                padding:1.5rem 1.5rem 1.25rem;position:relative;">
+
+      <button onclick="closeRecordingInfo()"
+        style="position:absolute;top:1rem;right:1rem;width:28px;height:28px;
+               border-radius:50%;background:var(--surface2);border:1px solid var(--border);
+               color:var(--gray);cursor:pointer;font-size:1rem;display:flex;
+               align-items:center;justify-content:center;transition:all 0.2s;"
+        onmouseover="this.style.borderColor='var(--yellow)';this.style.color='var(--yellow)'"
+        onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--gray)'">
+        ✕
+      </button>
+
+      <div style="display:flex;align-items:center;gap:0.9rem;">
+        <div style="width:44px;height:44px;border-radius:8px;background:var(--yellow);
+                    display:flex;align-items:center;justify-content:center;
+                    font-size:1.4rem;flex-shrink:0;">🎙</div>
+        <div>
+          <p style="font-size:0.65rem;letter-spacing:3px;text-transform:uppercase;
+                    color:var(--yellow);margin-bottom:2px;">Premium Service</p>
+          <h3 style="font-family:'Bebas Neue',sans-serif;font-size:1.6rem;
+                     letter-spacing:2px;color:#fff;line-height:1;">
+            Recording Suite
+          </h3>
         </div>
+      </div>
+
+      <div style="margin-top:1rem;display:flex;align-items:baseline;gap:0.4rem;">
+        <span style="font-family:'Bebas Neue',sans-serif;font-size:2.2rem;
+                     color:var(--yellow);letter-spacing:2px;">KES 3,000</span>
+        <span style="color:var(--gray);font-size:0.8rem;">/ hour</span>
+      </div>
+    </div>
+
+    {{-- Body --}}
+    <div style="padding:1.5rem;">
+      <p style="font-size:0.82rem;color:var(--gray);margin-bottom:1.25rem;line-height:1.6;">
+        The Recording Suite rate reflects a premium, fully-prepared environment built around your sound. Here's exactly what you get:
+      </p>
+
+      {{-- Reason 1 --}}
+      <div style="display:flex;gap:1rem;margin-bottom:1.1rem;align-items:flex-start;">
+        <div style="width:38px;height:38px;border-radius:8px;flex-shrink:0;
+                    background:rgba(245,197,24,0.12);border:1px solid var(--border-y);
+                    display:flex;align-items:center;justify-content:center;font-size:1.1rem;">
+          🎛
+        </div>
+        <div>
+          <p style="font-weight:700;color:var(--text);font-size:0.9rem;margin-bottom:3px;">
+            Custom Room Setup & Configuration
+          </p>
+          <p style="font-size:0.8rem;color:var(--gray);line-height:1.65;">
+            Before your session begins, our team configures the entire room to match your setup —
+            instrument placements, monitor mixes, mic positions, signal routing and DAW template.
+            No time wasted, just plug in and play.
+          </p>
+        </div>
+      </div>
+
+      {{-- Reason 2 --}}
+      <div style="display:flex;gap:1rem;margin-bottom:1.5rem;align-items:flex-start;">
+        <div style="width:38px;height:38px;border-radius:8px;flex-shrink:0;
+                    background:rgba(245,197,24,0.12);border:1px solid var(--border-y);
+                    display:flex;align-items:center;justify-content:center;font-size:1.1rem;">
+          🎧
+        </div>
+        <div>
+          <p style="font-weight:700;color:var(--text);font-size:0.9rem;margin-bottom:3px;">
+            In-Session Sound Engineer
+          </p>
+          <p style="font-size:0.8rem;color:var(--gray);line-height:1.65;">
+            A dedicated sound engineer is on hand throughout your session — handling levels,
+            making real-time adjustments and ensuring every take sounds its best.
+            Think of it as having a professional ear in the room at all times.
+          </p>
+        </div>
+      </div>
+
+      {{-- CTA --}}
+      <div style="display:flex;gap:0.75rem;flex-wrap:wrap;">
+        <a href="#booking" onclick="closeRecordingInfo()"
+           class="btn-primary" style="flex:1;text-align:center;padding:0.65rem 1rem;font-size:0.85rem;">
+          Book Recording Suite
+        </a>
+        <button onclick="closeRecordingInfo()"
+          class="btn-secondary"
+          style="flex:1;padding:0.65rem 1rem;font-size:0.85rem;cursor:pointer;">
+          Got it
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
         <div style="margin-top:2rem;">
           <a href="{{ route('home') }}" class="btn-secondary" style="padding:0.6rem 1.4rem;font-size:0.8rem;">← Back to Home</a>
         </div>
@@ -106,14 +250,20 @@
               @error('start_time')<span class="input-error">{{ $message }}</span>@enderror
             </div>
             <div class="form-group">
-              <label>Duration</label>
-              <select name="duration">
-                @foreach($durations as $value => $label)
-                  <option value="{{ $value }}" {{ old('duration', '1') == $value ? 'selected' : '' }}>{{ $label }}</option>
-                @endforeach
-              </select>
-              @error('duration')<span class="input-error">{{ $message }}</span>@enderror
-            </div>
+  <label>Duration (hours)</label>
+  <input type="number"
+         name="duration"
+         id="durationInput"
+         min="1"
+         max="12"
+         step="1"
+         placeholder="e.g. 1"
+         value="{{ old('duration', '') }}"
+         inputmode="numeric"
+         oninput="this.value = Math.max(1, Math.min(12, Math.floor(Math.abs(this.value || 1)))); computeAmount();"
+  />
+  @error('duration')<span class="input-error">{{ $message }}</span>@enderror
+</div>
           </div>
 
           <div class="form-group">
@@ -300,10 +450,11 @@ function checkClash() {
 document.getElementById('prevMonth').onclick = async () => { calMonth--; if (calMonth < 0) { calMonth = 11; calYear--; } const res = await fetch(`/api/slots?year=${calYear}&month=${calMonth+1}`); const d = await res.json(); Object.assign(bookedSlots, d); renderCalendar(); };
 document.getElementById('nextMonth').onclick = async () => { calMonth++; if (calMonth > 11) { calMonth = 0; calYear++; } const res = await fetch(`/api/slots?year=${calYear}&month=${calMonth+1}`); const d = await res.json(); Object.assign(bookedSlots, d); renderCalendar(); };
 
-// When room changes, re-filter time slots
+// When room changes, re-filter time slots and recompute amount (room rate may differ)
 document.getElementById('roomSelect').onchange = () => {
   const dateStr = document.getElementById('bookingDateInput').value;
   if (dateStr) filterTimeSlots(dateStr);
+  computeAmount();
 };
 
 document.getElementById('startTime').onchange = checkClash;
@@ -325,21 +476,38 @@ document.getElementById('roomSelect').onchange = () => {
     console.log('All booked keys:', Object.keys(bookedSlots));
     filterTimeSlots(dateStr);
   }
+  computeAmount();
 };
 
 
-// ── Auto-compute amount ──────────────────────────────────────────────
-const rates = { '1': 350, '2': 700, '3': 1050, '4': 1400, 'full': 4000 };
+// ── Auto-compute amount (per-room hourly rates) ───────────────────────
+// Recording Suite (room-c) bills at KES 3,000/hr; every other room
+// bills at the standard KES 350/hr deposit rate. Selecting "Recording
+// Suite" auto-applies its rate, and increasing duration auto-multiplies
+// it (1hr = 3000, 2hr = 6000, 3hr = 9000, etc.) — same as every other room.
+const ROOM_RATES = {
+  'room-a': 350,   // Rehearsal – (Band)
+  'room-b': 350,   // Rehearsal – (Solo)
+  'room-c': 3000,  // Recording – Suite
+  'room-d': 350,   // Lesson – Instrument
+  'room-e': 350,   // Room 1 – Podcast/Production
+};
+const DEFAULT_RATE = 350;
 
 function computeAmount() {
-    const duration = document.querySelector('select[name="duration"]').value;
-    const amount   = rates[duration] ?? 0;
-    document.getElementById('amountDisplay').value =
-        amount ? 'KES ' + amount.toLocaleString() : '';
-    document.getElementById('amountInput').value = amount;
+  const input  = document.getElementById('durationInput');
+  const hours  = parseInt(input.value, 10);
+  const room   = document.getElementById('roomSelect').value;
+  const rate   = room ? (ROOM_RATES[room] ?? DEFAULT_RATE) : 0;
+  const amount = (!isNaN(hours) && hours >= 1 && rate) ? hours * rate : 0;
+  const label  = !rate                ? '' :
+                 hours === 12         ? `KES ${amount.toLocaleString()} (Full Day)` :
+                 amount                ? `KES ${amount.toLocaleString()}` : '';
+  document.getElementById('amountDisplay').value = label;
+  document.getElementById('amountInput').value   = amount;
 }
 
-document.querySelector('select[name="duration"]').addEventListener('change', computeAmount);
+document.getElementById('durationInput').addEventListener('input', computeAmount);
 
 // Compute on load if old() value exists
 computeAmount();
@@ -367,7 +535,7 @@ function filterTimeSlots(selectedDateStr) {
 
   const room = document.getElementById('roomSelect').value;
 
-    // ── Sunday restricted hours: 14:00 – 20:00 only (last start = 20:00 if 1hr) ──
+    // ── Sunday restricted hours: 14:00 – 21:00 only ──
   const dateObj  = new Date(slotYear, slotMon - 1, slotDay);
   const isSunday = dateObj.getDay() === 0;
 
@@ -477,7 +645,7 @@ async function previewRecurring() {
   const date      = document.getElementById('bookingDateInput').value;
   const room      = document.getElementById('roomSelect').value;
   const time      = document.getElementById('startTime').value;
-  const duration  = document.querySelector('select[name="duration"]').value;
+  const duration  = document.getElementById('durationInput').value;
   const frequency = document.getElementById('recurrenceFrequency').value;
   const endDate   = document.getElementById('recurrenceEnd').value;
 
@@ -597,6 +765,28 @@ async function previewRecurring() {
 document.getElementById('bookingForm').addEventListener('submit', function () {
     const local = document.getElementById('phoneInput').value.replace(/^0+/, '').replace(/[^0-9]/g, '');
     document.getElementById('phoneHidden').value = '254' + local;
+});
+
+function showRecordingInfo() {
+  const modal = document.getElementById('recording-modal');
+  modal.style.display = 'flex';
+  // Prevent body scroll while modal is open
+  document.body.style.overflow = 'hidden';
+}
+
+function closeRecordingInfo() {
+  document.getElementById('recording-modal').style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+// Close on backdrop click
+document.getElementById('recording-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeRecordingInfo();
+});
+
+// Close on Escape key
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') closeRecordingInfo();
 });
 </script>
 @endpush
