@@ -232,7 +232,7 @@ const DEPOSIT_RATE_PER_HOUR = 350;
         'room-a' => 350,   // Rehearsal – (Band)
         'room-b' => 350,   // Rehearsal – (Solo)
         'room-c' => 3000,  // Recording – Suite
-        'room-d' => 350,   // Lesson – Instrument
+        'room-d' => 1000,   // Lesson – Instrument
         'room-e' => 350,   // Room 1 – Podcast/Production
     ];
 

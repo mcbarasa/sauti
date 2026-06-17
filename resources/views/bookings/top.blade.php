@@ -168,7 +168,7 @@
     <p class="hero-sub">Sauti Gang Studio — a creative sanctuary for bands, musicians &amp; artists to rehearse, record, and sharpen their craft.</p>
     <div class="hero-buttons">
       <a href="#booking" class="btn-primary">Book a Session</a>
-      <a href="#artists" class="btn-secondary">Artists</a>
+      <a href="#lessons" class="btn-secondary">Learn</a>
     </div>
     <div class="hero-stats">
       <div style="text-align:center;"><span class="stat-val">50+</span><span class="stat-label">Artists</span></div>
