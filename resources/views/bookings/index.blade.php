@@ -756,20 +756,6 @@ if (sundayNotice) sundayNotice.style.display = isSunday ? 'block' : 'none';
   }
 }
 
-// ── Check for slot clash (now silent — slots are already grayed) ──────
-function checkClash() {
-  if (!selectedDate) return;
-
-  // Re-run filterTimeSlots whenever room or date changes
-  // so booked slots update based on room selection
-  const dateStr = document.getElementById('bookingDateInput').value;
-  if (dateStr) filterTimeSlots(dateStr);
-
-  // Hide the notice — slots are visually blocked instead
-  const notice = document.getElementById('slotNotice');
-  if (notice) notice.classList.remove('show');
-}
-
 // ── Check for slot clash ─────────────────────────────────────────────
 function checkClash() {
   if (!selectedDate) return;
@@ -809,51 +795,13 @@ document.getElementById('nextMonth').onclick = async () => {
   renderCalendar();
 };
 
-// When room changes, re-filter time slots
+// ── Room change handler (SINGLE listener — re-filters slots, recomputes
+//    amount, and logs debug info). Previously this was assigned twice,
+//    which silently dropped the first listener; now it's merged into one
+//    so changing rooms always updates both the slot list and the amount. ──
 document.getElementById('roomSelect').onchange = () => {
   const dateStr = document.getElementById('bookingDateInput').value;
-  if (dateStr) filterTimeSlots(dateStr);
-  computeAmount();
-};
 
-document.getElementById('startTime').onchange  = checkClash;
-
-// ── Auto-compute amount ──────────────────────────────────────────────
-{{-- const RATE_PER_HOUR = 350; --}}
-// ── Auto-compute amount (per-room hourly rates) ───────────────────────
-// Recording Suite (room-c) bills at KES 3,000/hr; every other room
-// bills at the standard KES 350/hr deposit rate. Selecting "Recording
-// Suite" auto-applies its rate, and increasing duration auto-multiplies
-// it (1hr = 3000, 2hr = 6000, 3hr = 9000, etc.) — same as every other room.
-const ROOM_RATES = {
-  'room-a': 350,   // Rehearsal – (Band)
-  'room-b': 350,   // Rehearsal – (Solo)
-  'room-c': 3000,  // Recording – Suite
-  'room-d': 350,   // Lesson – Instrument
-  'room-e': 350,   // Room 1 – Podcast/Production
-};
-const DEFAULT_RATE = 350;
-
-function computeAmount() {
-  const input    = document.getElementById('durationInput');
-  const hours    = parseInt(input.value, 10);
-  const room     = document.getElementById('roomSelect').value;
-  const rate     = ROOM_RATES[room] ?? 0;
-  const amount   = (!isNaN(hours) && hours >= 1 && rate) ? hours * rate : 0;
-  const label    = hours === 12 ? `KES ${amount.toLocaleString()} (Full Day)` :
-                   amount       ? `KES ${amount.toLocaleString()}` : '';
-  document.getElementById('amountDisplay').value = label;
-  document.getElementById('amountInput').value   = amount;
-}
-
-document.getElementById('durationInput').addEventListener('input', computeAmount);
-
-// ── Kick off ─────────────────────────────────────────────────────────
-initCalendar();
-
-// Debug — paste in console after selecting date + room
-document.getElementById('roomSelect').onchange = () => {
-  const dateStr = document.getElementById('bookingDateInput').value;
   if (dateStr) {
     const parts   = dateStr.split('-');
     const year    = parseInt(parts[0]);
@@ -867,8 +815,47 @@ document.getElementById('roomSelect').onchange = () => {
     console.log('All booked keys:', Object.keys(bookedSlots));
     filterTimeSlots(dateStr);
   }
+
+  computeAmount();
 };
+
+document.getElementById('startTime').onchange  = checkClash;
+
+// ── Auto-compute amount (per-room hourly rates) ───────────────────────
+// Recording Suite (room-c) bills at KES 3,000/hr; every other room
+// bills at the standard KES 350/hr deposit rate. Selecting "Recording
+// Suite" auto-applies its rate, and increasing duration auto-multiplies
+// it (1hr = 3000, 2hr = 6000, 3hr = 9000, etc.) — same as every other room.
+// Changing the room AFTER duration is already filled also recomputes
+// immediately via the roomSelect.onchange handler above.
+const ROOM_RATES = {
+  'room-a': 350,   // Rehearsal – (Band)
+  'room-b': 350,   // Rehearsal – (Solo)
+  'room-c': 3000,  // Recording – Suite
+  'room-d': 350,   // Lesson – Instrument
+  'room-e': 350,   // Room 1 – Podcast/Production
+};
+const DEFAULT_RATE = 350;
+
+function computeAmount() {
+  const input    = document.getElementById('durationInput');
+  const hours    = parseInt(input.value, 10);
+  const room     = document.getElementById('roomSelect').value;
+  const rate     = room ? (ROOM_RATES[room] ?? DEFAULT_RATE) : 0;
+  const amount   = (!isNaN(hours) && hours >= 1 && rate) ? hours * rate : 0;
+  const label    = !rate                ? '' :
+                   hours === 12         ? `KES ${amount.toLocaleString()} (Full Day)` :
+                   amount                ? `KES ${amount.toLocaleString()}` : '';
+  document.getElementById('amountDisplay').value = label;
+  document.getElementById('amountInput').value   = amount;
+}
+
+document.getElementById('durationInput').addEventListener('input', computeAmount);
+
+// ── Kick off ─────────────────────────────────────────────────────────
+initCalendar();
 computeAmount();
+
 // ── Recurring booking JS ─────────────────────────────────────────────
 let recurringOn = false;
 

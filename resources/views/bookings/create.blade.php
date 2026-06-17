@@ -439,30 +439,27 @@ function selectDate(d, m, y) {
 }
 function checkClash() {
   if (!selectedDate) return;
-  const key = `${selectedDate.y}-${selectedDate.m}-${selectedDate.d}`;
-  const room = document.getElementById('roomSelect').value;
-  const time = document.getElementById('startTime').value;
+
+  // Re-run filterTimeSlots whenever room or date changes
+  // so booked slots update based on room selection
+  const dateStr = document.getElementById('bookingDateInput').value;
+  if (dateStr) filterTimeSlots(dateStr);
+
+  // Hide the notice — slots are visually blocked instead
   const notice = document.getElementById('slotNotice');
-  if (!room || !time) { notice.classList.remove('show'); return; }
-  if (bookedSlots[`${key}-${room}-${time}`]) { notice.textContent = '⚠ That slot is already booked. Please choose a different time or room.'; notice.classList.add('show'); }
-  else { notice.classList.remove('show'); }
+  if (notice) notice.classList.remove('show');
 }
+
 document.getElementById('prevMonth').onclick = async () => { calMonth--; if (calMonth < 0) { calMonth = 11; calYear--; } const res = await fetch(`/api/slots?year=${calYear}&month=${calMonth+1}`); const d = await res.json(); Object.assign(bookedSlots, d); renderCalendar(); };
 document.getElementById('nextMonth').onclick = async () => { calMonth++; if (calMonth > 11) { calMonth = 0; calYear++; } const res = await fetch(`/api/slots?year=${calYear}&month=${calMonth+1}`); const d = await res.json(); Object.assign(bookedSlots, d); renderCalendar(); };
 
-// When room changes, re-filter time slots and recompute amount (room rate may differ)
+// ── Room change handler (SINGLE listener — re-filters slots, recomputes
+//    amount, and logs debug info). Previously this was assigned twice,
+//    which silently dropped the first listener; now it's merged into one
+//    so changing rooms always updates both the slot list and the amount. ──
 document.getElementById('roomSelect').onchange = () => {
   const dateStr = document.getElementById('bookingDateInput').value;
-  if (dateStr) filterTimeSlots(dateStr);
-  computeAmount();
-};
 
-document.getElementById('startTime').onchange = checkClash;
-initCalendar();
-
-// Debug — paste in console after selecting date + room
-document.getElementById('roomSelect').onchange = () => {
-  const dateStr = document.getElementById('bookingDateInput').value;
   if (dateStr) {
     const parts   = dateStr.split('-');
     const year    = parseInt(parts[0]);
@@ -476,8 +473,12 @@ document.getElementById('roomSelect').onchange = () => {
     console.log('All booked keys:', Object.keys(bookedSlots));
     filterTimeSlots(dateStr);
   }
+
   computeAmount();
 };
+
+document.getElementById('startTime').onchange = checkClash;
+initCalendar();
 
 
 // ── Auto-compute amount (per-room hourly rates) ───────────────────────
@@ -485,6 +486,8 @@ document.getElementById('roomSelect').onchange = () => {
 // bills at the standard KES 350/hr deposit rate. Selecting "Recording
 // Suite" auto-applies its rate, and increasing duration auto-multiplies
 // it (1hr = 3000, 2hr = 6000, 3hr = 9000, etc.) — same as every other room.
+// Changing the room AFTER duration is already filled also recomputes
+// immediately via the roomSelect.onchange handler above.
 const ROOM_RATES = {
   'room-a': 350,   // Rehearsal – (Band)
   'room-b': 350,   // Rehearsal – (Solo)
@@ -582,20 +585,6 @@ options.forEach(opt => {
   if (select.value && select.options[select.selectedIndex]?.disabled) {
     select.value = '';
   }
-}
-
-// ── Check for slot clash (now silent — slots are already grayed) ──────
-function checkClash() {
-  if (!selectedDate) return;
-
-  // Re-run filterTimeSlots whenever room or date changes
-  // so booked slots update based on room selection
-  const dateStr = document.getElementById('bookingDateInput').value;
-  if (dateStr) filterTimeSlots(dateStr);
-
-  // Hide the notice — slots are visually blocked instead
-  const notice = document.getElementById('slotNotice');
-  if (notice) notice.classList.remove('show');
 }
 
 // ── Recurring booking JS ─────────────────────────────────────────────

@@ -45,13 +45,24 @@ class BookingController extends Controller
     public function initiate(StoreBookingRequest $request, MpesaService $mpesa)
     {
         $data           = $request->validated();
-        $data['amount'] = Booking::computeAmount($data['duration']);
+        $data['amount'] = Booking::computeAmount($data['duration'], $data['room']);
 
-        if (Booking::isSlotTaken($data['booking_date'], $data['room'], $data['start_time'])) {
+        // ── Reject if the requested duration runs past closing time ────
+        if (Booking::isOutsideOperatingHours($data['booking_date'], $data['start_time'], $data['duration'])) {
+            $message = 'That start time and duration would run past our closing hours. Please pick an earlier time or a shorter duration.';
             if ($request->expectsJson()) {
-                return response()->json(['status' => 'slot_taken'], 422);
+                return response()->json(['status' => 'outside_hours', 'message' => $message], 422);
             }
-            return back()->withInput();
+            return back()->withInput()->withErrors(['slot' => $message]);
+        }
+
+        // ── Reject if it overlaps an existing booking for the same room ─
+        if (Booking::hasOverlap($data['booking_date'], $data['room'], $data['start_time'], $data['duration'])) {
+            $message = 'That room is already booked for part of this time range. Please choose a different time or room.';
+            if ($request->expectsJson()) {
+                return response()->json(['status' => 'slot_taken', 'message' => $message], 422);
+            }
+            return back()->withInput()->withErrors(['slot' => $message]);
         }
 
         $reference = 'SGS-' . strtoupper(substr(preg_replace('/\D/', '', $data['phone']), -6)) . '-' . time();
@@ -228,10 +239,16 @@ public function checkMpesaPayment(Request $request, MpesaService $mpesa)
 
             $current = $startDate->copy();
             while ($current->lte($endDate)) {
-                $isTaken = Booking::isSlotTaken(
+                $outsideHours = Booking::isOutsideOperatingHours(
+                    $current->toDateString(),
+                    $recurringData['start_time'],
+                    $recurringData['duration']
+                );
+                $isTaken = $outsideHours || Booking::hasOverlap(
                     $current->toDateString(),
                     $recurringData['room'],
-                    $recurringData['start_time']
+                    $recurringData['start_time'],
+                    $recurringData['duration']
                 );
 
                 if (!$isTaken) {
@@ -281,10 +298,11 @@ public function checkMpesaPayment(Request $request, MpesaService $mpesa)
 
         // ── SINGLE BOOKING ────────────────────────────────────────────
         if ($bookingData) {
-            if (Booking::isSlotTaken(
+            if (Booking::hasOverlap(
                 $bookingData['booking_date'],
                 $bookingData['room'],
-                $bookingData['start_time']
+                $bookingData['start_time'],
+                $bookingData['duration']
             )) {
                 return response()->json(['status' => 'slot_taken']);
             }
@@ -562,19 +580,21 @@ public function checkoutConfirm(Booking $booking)
                 };
             }
 
-            $slots = collect($dates)->map(function (Carbon $date) use ($room, $startTime) {
-                $isTaken = Booking::isSlotTaken($date->toDateString(), $room, $startTime);
+            $slots = collect($dates)->map(function (Carbon $date) use ($room, $startTime, $request) {
+                $outsideHours = Booking::isOutsideOperatingHours($date->toDateString(), $startTime, $request->duration);
+                $isTaken      = $outsideHours || Booking::hasOverlap($date->toDateString(), $room, $startTime, $request->duration);
                 return [
                     'date'      => $date->toDateString(),
                     'formatted' => $date->format('D, d M Y'),
                     'available' => !$isTaken,
                     'conflict'  => $isTaken,
+                    'reason'    => $outsideHours ? 'outside_hours' : ($isTaken ? 'booked' : null),
                 ];
             });
 
             $availableCount = $slots->where('available', true)->count();
             $conflictCount  = $slots->where('conflict', true)->count();
-            $amount         = Booking::computeAmount($request->duration);
+            $amount         = Booking::computeAmount($request->duration, $room);
             $totalAmount    = $availableCount * $amount;
 
             return response()->json([
@@ -634,10 +654,11 @@ public function checkoutConfirm(Booking $booking)
 
         // Filter to available dates only
         $availableDates = array_values(array_filter($dates, function (Carbon $date) use ($request) {
-            return !Booking::isSlotTaken($date->toDateString(), $request->room, $request->start_time);
+            $outsideHours = Booking::isOutsideOperatingHours($date->toDateString(), $request->start_time, $request->duration);
+            return !$outsideHours && !Booking::hasOverlap($date->toDateString(), $request->room, $request->start_time, $request->duration);
         }));
 
-        $amountPerSession = Booking::computeAmount($request->duration);
+        $amountPerSession = Booking::computeAmount($request->duration, $request->room);
         $totalAmount      = count($availableDates) * $amountPerSession;
 
         if ($totalAmount <= 0) {
