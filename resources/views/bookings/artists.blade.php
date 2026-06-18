@@ -509,7 +509,7 @@
           'text_color'   => '#E5785A',
           'bio'          => 'Music trainer(Piano,all guitars,vocals,worship teams training)',
           'instagram'    => 'https://instagram.com/irankunda.elyse',
-          'phone'        => '+254 7xx xxx xxx',
+          'phone'        => '+254 741 935 868',
         ],
       ];
       @endphp
