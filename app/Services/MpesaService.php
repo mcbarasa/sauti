@@ -8,57 +8,77 @@ use Illuminate\Support\Facades\Cache;
 
 class MpesaService
 {
-public function getAccessToken(): string
-{
-    $cacheKey = 'mpesa_access_token';
-    $retryKey = 'mpesa_token_retry_after';
+    public function getAccessToken(): string
+    {
+        $cacheKey = 'mpesa_access_token';
+        $retryKey = 'mpesa_token_retry_after';
 
-    // Check if we're in a cooldown period
-    if (Cache::has($retryKey)) {
-        $retryAfter = Cache::get($retryKey);
-        $secondsLeft = $retryAfter - now()->timestamp;
-
-        throw new \Exception(
-            "M-Pesa is temporarily unavailable. Please try again in " .
-            ceil($secondsLeft / 60) . " minute(s)."
-        );
-    }
-
-    // Return cached token if still valid
-    if (Cache::has($cacheKey)) {
-        return Cache::get($cacheKey);
-    }
-
-    try {
-        $response = Http::withBasicAuth(
-            config('mpesa.consumer_key'),
-            config('mpesa.consumer_secret')
-        )->get(rtrim(config('mpesa.base_url'), '/') . '/oauth/v1/generate?grant_type=client_credentials');
-
-        $token = $response->json('access_token');
-
-        if ($response->failed() || is_null($token)) {
-            // Set a 60-second cooldown before allowing retry
-            Cache::put($retryKey, now()->addMinute()->timestamp, 60);
+        // Check if we're in a cooldown period
+        if (Cache::has($retryKey)) {
+            $retryAfter = Cache::get($retryKey);
+            $secondsLeft = $retryAfter - now()->timestamp;
 
             throw new \Exception(
-                "Could not connect to M-Pesa. Please try again in 1 minute."
+                "M-Pesa is temporarily unavailable. Please try again in " .
+                ceil($secondsLeft / 60) . " minute(s)."
             );
         }
 
-        // Cache the token for 55 minutes (tokens expire after 1 hour)
-        Cache::put($cacheKey, $token, now()->addMinutes(55));
+        // Return cached token if still valid
+        if (Cache::has($cacheKey)) {
+            return Cache::get($cacheKey);
+        }
 
-        return $token;
+        try {
+            // ── timeout() caps how long we wait per attempt, retry() gives
+            // 2 extra attempts (3 total) with a short pause between them.
+            // This absorbs normal sandbox flakiness (slow responses, brief
+            // DNS blips) instead of failing on the very first hiccup. ──
+            $response = Http::withBasicAuth(
+                    config('mpesa.consumer_key'),
+                    config('mpesa.consumer_secret')
+                )
+                ->timeout(15)
+                ->connectTimeout(5)
+                ->retry(2, 1000, function ($exception) {
+                    // Only retry on connection issues / timeouts, not on
+                    // valid HTTP responses (e.g. 401 bad credentials),
+                    // since retrying those would just waste time.
+                    return $exception instanceof \Illuminate\Http\Client\ConnectionException;
+                })
+                ->get(rtrim(config('mpesa.base_url'), '/') . '/oauth/v1/generate?grant_type=client_credentials');
 
-    } catch (\Illuminate\Http\Client\ConnectionException $e) {
-        Cache::put($retryKey, now()->addMinute()->timestamp, 60);
+            $token = $response->json('access_token');
 
-        throw new \Exception(
-            "Could not reach M-Pesa servers. Please try again in 1 minute."
-        );
+            if ($response->failed() || is_null($token)) {
+                // Set a 60-second cooldown before allowing retry
+                Cache::put($retryKey, now()->addMinute()->timestamp, 60);
+
+                Log::error('M-Pesa token request returned no access_token', [
+                    'status' => $response->status(),
+                    'body'   => $response->body(),
+                ]);
+
+                throw new \Exception(
+                    "Could not connect to M-Pesa. Please try again in 1 minute."
+                );
+            }
+
+            // Cache the token for 55 minutes (tokens expire after 1 hour)
+            Cache::put($cacheKey, $token, now()->addMinutes(55));
+
+            return $token;
+
+        } catch (\Illuminate\Http\Client\ConnectionException $e) {
+            Cache::put($retryKey, now()->addMinute()->timestamp, 60);
+
+            Log::error('M-Pesa token connection failed after retries: ' . $e->getMessage());
+
+            throw new \Exception(
+                "Could not reach M-Pesa servers. Please try again in 1 minute."
+            );
+        }
     }
-}
 
     public function stkPush(string $phone, int $amount, string $reference): array
     {
@@ -68,23 +88,38 @@ public function getAccessToken(): string
         $password  = base64_encode($shortcode . config('mpesa.passkey') . $timestamp);
         $phone     = $this->formatPhone($phone);
 
-        $response = Http::withToken($token)
-            ->post(config('mpesa.base_url') . '/mpesa/stkpush/v1/processrequest', [
-                'BusinessShortCode' => $shortcode,
-                'Password'          => $password,
-                'Timestamp'         => $timestamp,
-                'TransactionType'   => 'CustomerPayBillOnline',
-                'Amount'            => $amount,
-                'PartyA'            => $phone,
-                'PartyB'            => $shortcode,
-                'PhoneNumber'       => $phone,
-                'CallBackURL'       => config('mpesa.callback_url'),
-                'AccountReference'  => $reference,
-                'TransactionDesc'   => 'Sauti Gang Studio Booking',
-            ]);
+        try {
+            $response = Http::withToken($token)
+                ->timeout(20)
+                ->connectTimeout(5)
+                ->retry(2, 1000, function ($exception) {
+                    return $exception instanceof \Illuminate\Http\Client\ConnectionException;
+                })
+                ->post(rtrim(config('mpesa.base_url'), '/') . '/mpesa/stkpush/v1/processrequest', [
+                    'BusinessShortCode' => $shortcode,
+                    'Password'          => $password,
+                    'Timestamp'         => $timestamp,
+                    'TransactionType'   => 'CustomerPayBillOnline',
+                    'Amount'            => $amount,
+                    'PartyA'            => $phone,
+                    'PartyB'            => $shortcode,
+                    'PhoneNumber'       => $phone,
+                    'CallBackURL'       => config('mpesa.callback_url'),
+                    'AccountReference'  => $reference,
+                    'TransactionDesc'   => 'Sauti Gang Studio Booking',
+                ]);
 
-        Log::info('STK Push', $response->json());
-        return $response->json();
+            Log::info('STK Push', $response->json() ?? ['raw' => $response->body()]);
+
+            return $response->json() ?? [];
+
+        } catch (\Illuminate\Http\Client\ConnectionException $e) {
+            Log::error('STK Push connection failed after retries: ' . $e->getMessage());
+
+            throw new \Exception(
+                "Could not reach M-Pesa servers. Please try again in 1 minute."
+            );
+        }
     }
 
     public function stkQuery(string $checkoutRequestId): array
@@ -94,15 +129,29 @@ public function getAccessToken(): string
         $shortcode = config('mpesa.shortcode');
         $password  = base64_encode($shortcode . config('mpesa.passkey') . $timestamp);
 
-        $response = Http::withToken($token)
-            ->post(config('mpesa.base_url') . '/mpesa/stkpushquery/v1/query', [
-                'BusinessShortCode' => $shortcode,
-                'Password'          => $password,
-                'Timestamp'         => $timestamp,
-                'CheckoutRequestID' => $checkoutRequestId,
-            ]);
+        try {
+            $response = Http::withToken($token)
+                ->timeout(15)
+                ->connectTimeout(5)
+                ->retry(2, 1000, function ($exception) {
+                    return $exception instanceof \Illuminate\Http\Client\ConnectionException;
+                })
+                ->post(rtrim(config('mpesa.base_url'), '/') . '/mpesa/stkpushquery/v1/query', [
+                    'BusinessShortCode' => $shortcode,
+                    'Password'          => $password,
+                    'Timestamp'         => $timestamp,
+                    'CheckoutRequestID' => $checkoutRequestId,
+                ]);
 
-        return $response->json();
+            return $response->json() ?? [];
+
+        } catch (\Illuminate\Http\Client\ConnectionException $e) {
+            Log::error('STK Query connection failed after retries: ' . $e->getMessage());
+
+            throw new \Exception(
+                "Could not reach M-Pesa servers. Please try again in 1 minute."
+            );
+        }
     }
 
     public function formatPhone(string $phone): string
