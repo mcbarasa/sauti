@@ -571,6 +571,10 @@ li:has(#recording-suite-row) { transition:background 0.2s; }
              style="background:var(--surface2);border:1px solid var(--border-y);border-radius:50%;width:42px;height:42px;display:flex;align-items:center;justify-content:center;color:var(--text2);font-size:1.1rem;text-decoration:none;">
             <i class="fa-brands fa-twitter"></i>
           </a>
+          <a href="https://www.tiktok.com/@sautigangstudios?lang=en" target="_blank"
+             style="background:var(--surface2);border:1px solid var(--border-y);border-radius:50%;width:42px;height:42px;display:flex;align-items:center;justify-content:center;color:var(--text2);font-size:1.1rem;text-decoration:none;">
+            <i class="fa-brands fa-tiktok"></i>
+          </a>
         </div>
       </div>
 
