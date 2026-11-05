@@ -1,3 +1,9 @@
+@php
+    // ---- EDIT THESE ----
+    $phone      = '+254112935073';   // shown on Call button
+    $whatsapp   = '254112935073';    // digits only, no +
+   
+@endphp
 @extends('layouts.app')
 @section('title', 'Sauti Gang Studios')
 
@@ -140,7 +146,16 @@
 
 /* Hover highlight on the recording suite row */
 li:has(#recording-suite-row) { transition:background 0.2s; }
+.wa-float{position:fixed;right:1.25rem;bottom:1.25rem;z-index:900;display:flex;align-items:center;gap:.6rem;background:#25D366;color:#fff;text-decoration:none;font-weight:700;font-size:.9rem;padding:.8rem 1.1rem;border-radius:40px;box-shadow:0 4px 18px rgba(0,0,0,.3);transition:transform .15s}
+.wa-float:hover{transform:translateY(-2px)}
+.wa-float svg{width:22px;height:22px;fill:#fff}
+@media (max-width:480px){.wa-float span{display:none}.wa-float{padding:.9rem}}
 </style>
+</head>
+<a class="wa-float" href="https://wa.me/{{ $whatsapp }}?text={{ urlencode('Hi Sauti Gang, I would like to Inquire about booking studio session with you.') }}" target="_blank" rel="noopener" aria-label="Chat on WhatsApp">
+  <svg viewBox="0 0 32 32"><path d="M16 3C9 3 3.4 8.6 3.4 15.5c0 2.3.6 4.4 1.7 6.3L3 29l7.4-2c1.8 1 3.800 1.500 5.800 1.500 7 0 12.600-5.600 12.600-12.500S23 3 16 3zm0 22.800c-1.800 0-3.600-.5-5.100-1.400l-.4-.2-4.400 1.200 1.200-4.300-.3-.4a10.200 10.200 0 0 1-1.600-5.500C5.400 9.800 10.200 5.200 16 5.200s10.600 4.600 10.600 10.300S21.800 25.800 16 25.800zm5.800-7.600c-.3-.2-1.900-.9-2.200-1-.3-.1-.5-.2-.7.200-.2.300-.8 1-1 1.200-.2.200-.4.200-.7.100-.3-.2-1.400-.5-2.600-1.600-1-.9-1.600-1.900-1.800-2.200-.2-.3 0-.5.100-.6l.5-.6c.1-.2.200-.3.300-.5.100-.2.100-.4 0-.6-.1-.2-.7-1.700-1-2.300-.3-.6-.5-.5-.7-.5h-.6c-.2 0-.6.100-.9.400-.3.300-1.200 1.200-1.200 2.900s1.200 3.400 1.400 3.600c.2.200 2.400 3.800 5.900 5.200 3.500 1.400 3.500.9 4.100.9.600-.1 1.900-.8 2.200-1.600.3-.8.300-1.400.2-1.600-.1-.1-.3-.2-.6-.4z"/></svg>
+  <span>Chat with us</span>
+</a>
 
 <!-- ═══════════════ HERO ═══════════════ -->
 @include('bookings.top')
@@ -520,10 +535,11 @@ li:has(#recording-suite-row) { transition:background 0.2s; }
 </section>
 
 <section>
-@include('bookings.learn')
-</section>
-<section>
   @include('bookings.artists')
+</section>
+
+<section>
+@include('bookings.partners')
 </section>
 
 <!-- ═══════════════ CONTACT ═══════════════ -->

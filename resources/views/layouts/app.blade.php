@@ -84,10 +84,85 @@ nav { position:fixed; top:0; left:0; right:0; z-index:1000; display:flex; align-
 .mobile-menu li { list-style:none; border-bottom:1px solid var(--border); }
 .mobile-menu li a { display:block; padding:1rem 0; color:var(--text); font-size:1rem; letter-spacing:2px; text-transform:uppercase; text-decoration:none; transition:color 0.2s; }
 .mobile-menu li a:hover { color:var(--yellow); }
-.mobile-menu .mobile-cta { margin-top:1.5rem; }
+.mobile-menu .mobile-cta { margin-top:1.5rem; border-bottom:none; }
 .mobile-menu .mobile-cta a { background:var(--yellow); color:#0A0A0A !important; text-align:center; border-radius:3px; padding:0.9rem 0 !important; font-weight:700; }
 .mobile-menu .theme-row { margin-top:1rem; display:flex; align-items:center; justify-content:space-between; padding:0.75rem 0; border-bottom:1px solid var(--border); }
 .mobile-menu .theme-row label { font-size:0.8rem; letter-spacing:2px; text-transform:uppercase; color:var(--gray); }
+
+/* GANG HUB DROPDOWN */
+.nav-dd { position:relative; }
+.nav-dd-btn {
+  position:relative; overflow:hidden; display:flex; align-items:center; gap:8px;
+  background:var(--yellow-bg); color:var(--yellow);
+  border:1px solid var(--yellow); border-radius:30px;
+  padding:0.45rem 1.1rem; cursor:pointer;
+  font-family:'DM Sans',sans-serif; font-size:0.85rem; font-weight:700;
+  letter-spacing:1.5px; text-transform:uppercase;
+  animation:sgPulse 1.8s ease-out infinite;
+  transition:background 0.2s, color 0.2s, transform 0.15s;
+}
+.nav-dd-btn:hover { background:var(--yellow); color:#0A0A0A; transform:translateY(-1px); }
+[data-theme="light"] .nav-dd-btn { color:var(--yellow-deep); border-color:var(--yellow-dark); }
+[data-theme="light"] .nav-dd-btn:hover { background:var(--yellow-dark); color:#fff; }
+
+/* shimmer sweep */
+.nav-dd-btn::after {
+  content:''; position:absolute; top:0; left:-60%; width:40%; height:100%;
+  background:linear-gradient(110deg,transparent,rgba(255,255,255,0.45),transparent);
+  transform:skewX(-20deg);
+  animation:sgShimmer 3s ease-in-out infinite;
+  pointer-events:none;
+}
+
+/* blinking live dot */
+.live-dot {
+  width:8px; height:8px; border-radius:50%; background:#E55A5A; flex-shrink:0;
+  animation:sgBlink 1s steps(2,start) infinite;
+}
+.dd-chev { font-size:0.65rem; animation:sgBounce 1.4s ease-in-out infinite; }
+
+/* stop nagging after first interaction */
+.nav-dd.seen .nav-dd-btn,
+.nav-dd.seen .nav-dd-btn::after,
+.nav-dd.seen .live-dot,
+.nav-dd.seen .dd-chev { animation:none; }
+
+@keyframes sgPulse {
+  0%   { box-shadow:0 0 0 0 rgba(245,197,24,0.55); }
+  70%  { box-shadow:0 0 0 14px rgba(245,197,24,0); }
+  100% { box-shadow:0 0 0 0 rgba(245,197,24,0); }
+}
+@keyframes sgBlink { 0%{opacity:1} 100%{opacity:0.2} }
+@keyframes sgShimmer { 0%{left:-60%} 55%,100%{left:130%} }
+@keyframes sgBounce { 0%,100%{transform:translateY(-1px)} 50%{transform:translateY(2px)} }
+
+/* dropdown panel */
+.nav-dd-menu {
+  position:absolute; top:calc(100% + 12px); right:0; min-width:260px;
+  background:var(--modal-bg); border:1px solid var(--border-y); border-radius:6px;
+  box-shadow:var(--shadow); padding:0.5rem;
+  opacity:0; visibility:hidden; transform:translateY(8px);
+  transition:opacity 0.2s, transform 0.2s, visibility 0.2s;
+}
+/* invisible bridge so the menu doesn't close while the mouse crosses the gap */
+.nav-dd-menu::before { content:''; position:absolute; top:-14px; left:0; right:0; height:14px; }
+.nav-dd:hover .nav-dd-menu,
+.nav-dd:focus-within .nav-dd-menu,
+.nav-dd.open .nav-dd-menu { opacity:1; visibility:visible; transform:translateY(0); }
+
+.nav-dd-menu a {
+  display:flex; align-items:center; gap:14px; padding:0.8rem 1rem; border-radius:4px;
+  text-transform:none; letter-spacing:0; color:var(--text);
+}
+.nav-dd-menu a:hover { background:var(--yellow-bg); color:var(--text); }
+.nav-dd-menu a i { font-size:1.2rem; color:var(--yellow); width:24px; text-align:center; }
+[data-theme="light"] .nav-dd-menu a i { color:var(--yellow-deep); }
+.nav-dd-menu strong { display:block; font-size:0.95rem; letter-spacing:1px; text-transform:uppercase; }
+.nav-dd-menu small { display:block; font-size:0.78rem; color:var(--gray); }
+
+@media (prefers-reduced-motion:reduce) {
+  .nav-dd-btn, .nav-dd-btn::after, .live-dot, .dd-chev { animation:none !important; }
+}
 
 /* GLOBAL BUTTONS */
 .btn-primary { background:var(--yellow); color:#0A0A0A; padding:0.9rem 2.2rem; font-weight:700; font-size:0.9rem; letter-spacing:1.5px; text-transform:uppercase; border:none; border-radius:3px; cursor:pointer; text-decoration:none; display:inline-block; transition:background 0.2s,transform 0.15s; }
@@ -203,7 +278,6 @@ footer { background:var(--footer-bg); border-top:1px solid var(--border); paddin
 
 /* ═══════════════════════════════════════════
    RESPONSIVE BREAKPOINTS
-   All functionality preserved; layout adapts
 ═══════════════════════════════════════════ */
 
 /* ── Large tablets (≤1024px) ── */
@@ -215,30 +289,23 @@ footer { background:var(--footer-bg); border-top:1px solid var(--border); paddin
 
 /* ── Tablets (≤768px) ── */
 @media (max-width:768px) {
-  /* Nav */
   nav { padding:0.85rem 1.25rem; }
   .nav-links { display:none; }
   .nav-hamburger { display:flex; }
 
-  /* Sections */
   section { padding:4.5rem 1.25rem; }
   .section-title { font-size:clamp(2rem,8vw,3rem); }
 
-  /* Booking */
   .booking-wrap { grid-template-columns:1fr; gap:2rem; }
   .booking-form { padding:1.5rem; }
 
-  /* Form rows collapse to single column */
   .form-row { grid-template-columns:1fr; }
 
-  /* Confirmation card */
   .confirm-card { margin:6rem 1.25rem 3rem; padding:2rem 1.5rem; }
 
-  /* Admin table: enable horizontal scroll */
   .admin-wrap { padding:5rem 1.25rem 3rem; overflow-x:auto; }
   .admin-table { min-width:640px; }
 
-  /* Footer */
   .footer-inner { flex-direction:column; align-items:flex-start; gap:0.75rem; }
 }
 
@@ -255,15 +322,12 @@ footer { background:var(--footer-bg); border-top:1px solid var(--border); paddin
 
   .booking-form { padding:1.25rem 1rem; }
 
-  /* Calendar touch targets: slightly bigger cells */
   .cal-day { padding:8px 2px; font-size:0.78rem; }
 
-  /* Confirm card full-width */
   .confirm-card { margin:5.5rem 0.75rem 2rem; padding:1.75rem 1.25rem; }
   .confirm-detail { flex-direction:column; gap:0.25rem; }
   .confirm-detail span:last-child { font-size:0.95rem; }
 
-  /* Admin table stays scrollable */
   .admin-table th,
   .admin-table td { padding:0.6rem 0.75rem; }
 }
@@ -274,6 +338,7 @@ footer { background:var(--footer-bg); border-top:1px solid var(--border); paddin
   .section-sub { font-size:0.95rem; }
 }
 </style>
+<noscript><style>.reveal{opacity:1 !important;transform:none !important;}</style></noscript>
 </head>
 <body>
 
@@ -290,7 +355,29 @@ footer { background:var(--footer-bg); border-top:1px solid var(--border); paddin
   <ul class="nav-links">
     <li><a href="{{ route('home') }}#about">About</a></li>
     <li><a href="{{ route('home') }}#artists">Artists</a></li>
+    <li><a href="{{ route('home') }}#partners">Partners</a></li>
     <li><a href="{{ route('home') }}#contact">Contact</a></li>
+
+    <!-- GANG HUB (replaces the old SG Events link) -->
+    <li class="nav-dd" id="gangHub">
+      <button class="nav-dd-btn" type="button" aria-haspopup="true" aria-expanded="false">
+        <span class="live-dot"></span>
+        Gang Hub
+        <i class="fa-solid fa-chevron-down dd-chev"></i>
+      </button>
+
+      <div class="nav-dd-menu" role="menu">
+        <a href="{{ route('sg-events') }}" role="menuitem">
+          <i class="fa-solid fa-calendar-days"></i>
+          <span><strong>SG Events</strong><small>What's happening at the studio</small></span>
+        </a>
+        <a href="{{ route('learn') }}" role="menuitem">
+          <i class="fa-solid fa-graduation-cap"></i>
+          <span><strong>Learn</strong><small>Workshops &amp; production lessons</small></span>
+        </a>
+      </div>
+    </li>
+
     {{-- <li><a href="{{ route('bookings.admin') }}">Admin</a></li> --}}
     <li>
       <button class="theme-toggle-btn" onclick="toggleTheme()" title="Toggle light / dark mode">
@@ -309,12 +396,18 @@ footer { background:var(--footer-bg); border-top:1px solid var(--border); paddin
   </button>
 </nav>
 
-<!-- Mobile menu drawer -->
-<ul class="mobile-menu" id="mobileMenu" role="navigation" aria-label="Mobile navigation">
-  <li><a href="{{ route('home') }}#about"    onclick="closeMobileMenu()">About</a></li>
-  <li><a href="{{ route('home') }}#artists"  onclick="closeMobileMenu()">Artists</a></li>
-  <li><a href="{{ route('home') }}#contact"  onclick="closeMobileMenu()">Contact</a></li>
-  {{-- <li><a href="{{ route('bookings.admin') }}" onclick="closeMobileMenu()">Admin</a></li> --}}
+<!-- MOBILE MENU -->
+<ul class="mobile-menu" id="mobileMenu">
+  <li><a href="{{ route('home') }}#about">About</a></li>
+  <li><a href="{{ route('home') }}#artists">Artists</a></li>
+  <li><a href="{{ route('home') }}#partners">Partners</a></li>
+  <li><a href="{{ route('home') }}#contact">Contact</a></li>
+  <li>
+    <a href="{{ route('sg-events') }}">
+      <span class="live-dot" style="display:inline-block;margin-right:8px"></span>Gang Hub: SG Events
+    </a>
+  </li>
+  <li><a href="{{ route('learn') }}">Gang Hub: Learn</a></li>
   <li class="theme-row">
     <label>Theme</label>
     <button class="theme-toggle-btn" onclick="toggleTheme()" title="Toggle light / dark mode">
@@ -322,63 +415,146 @@ footer { background:var(--footer-bg); border-top:1px solid var(--border); paddin
       <div class="tt-track"><div class="tt-thumb"></div></div>
     </button>
   </li>
-  <li class="mobile-cta"><a href="{{ route('bookings.create') }}" onclick="closeMobileMenu()">Book a Session</a></li>
+  <li class="mobile-cta"><a href="{{ route('bookings.initiate') }}">Book a Session</a></li>
 </ul>
 
 @yield('content')
 
-<footer>
-  <div class="footer-inner">
-    <p class="footer-copy">&copy; {{ date('Y') }} Sauti Gang Studio. Nairobi, Kenya. All rights reserved.</p>
-  </div>
-</footer>
-
 <script>
-/* ── Theme ── */
+/* THEME TOGGLE */
 function toggleTheme() {
   const html = document.documentElement;
-  html.setAttribute('data-theme', html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
-  localStorage.setItem('theme', html.getAttribute('data-theme'));
+  const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  html.setAttribute('data-theme', next);
+  try { localStorage.setItem('sg_theme', next); } catch (e) {}
 }
-const saved = localStorage.getItem('theme');
-if (saved) document.documentElement.setAttribute('data-theme', saved);
+(function () {
+  try {
+    const saved = localStorage.getItem('sg_theme');
+    if (saved) document.documentElement.setAttribute('data-theme', saved);
+  } catch (e) {}
+})();
 
-/* ── Mobile menu ── */
-const hamburger  = document.getElementById('navHamburger');
-const mobileMenu = document.getElementById('mobileMenu');
+/* MOBILE MENU */
+(function () {
+  const burger = document.getElementById('navHamburger');
+  const menu   = document.getElementById('mobileMenu');
+  if (!burger || !menu) return;
 
-function closeMobileMenu() {
-  mobileMenu.classList.remove('open');
-  hamburger.classList.remove('open');
-  hamburger.setAttribute('aria-expanded', 'false');
-  document.body.style.overflow = '';
-}
+  function setOpen(open) {
+    burger.classList.toggle('open', open);
+    menu.classList.toggle('open', open);
+    burger.setAttribute('aria-expanded', open);
+    document.body.style.overflow = open ? 'hidden' : '';
+  }
+  burger.addEventListener('click', () => setOpen(!menu.classList.contains('open')));
+  menu.querySelectorAll('a').forEach(a => a.addEventListener('click', () => setOpen(false)));
+})();
 
-hamburger.addEventListener('click', function () {
-  const isOpen = mobileMenu.classList.toggle('open');
-  hamburger.classList.toggle('open', isOpen);
-  hamburger.setAttribute('aria-expanded', String(isOpen));
-  document.body.style.overflow = isOpen ? 'hidden' : '';
-});
 
-/* Close drawer when clicking a hash link (smooth scroll to section) */
-mobileMenu.querySelectorAll('a[href*="#"]').forEach(function (link) {
-  link.addEventListener('click', closeMobileMenu);
-});
+/* SCROLL REVEAL — makes every .reveal block (Artists, Contact, Booking...) visible */
+(function () {
+  const items = document.querySelectorAll('.reveal');
+  if (!items.length) return;
 
-/* Close drawer on Escape key */
-document.addEventListener('keydown', function (e) {
-  if (e.key === 'Escape') closeMobileMenu();
-});
+  // No observer support, or user prefers reduced motion: just show everything
+  if (!('IntersectionObserver' in window) ||
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    items.forEach(el => el.classList.add('visible'));
+    return;
+  }
 
-/* ── Scroll reveal ── */
-const obs = new IntersectionObserver(function (entries) {
-  entries.forEach(function (e) {
-    if (e.isIntersecting) { e.target.classList.add('visible'); obs.unobserve(e.target); }
+  const io = new IntersectionObserver((entries, obs) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+        obs.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.05, rootMargin: '0px 0px -40px 0px' });
+
+  items.forEach(el => io.observe(el));
+
+  // Safety net: never leave content hidden if something goes wrong
+  setTimeout(() => items.forEach(el => el.classList.add('visible')), 4000);
+})();
+
+/* GANG HUB DROPDOWN */
+(function () {
+  const dd  = document.getElementById('gangHub');
+  if (!dd) return;
+  const btn = dd.querySelector('.nav-dd-btn');
+
+  try { if (sessionStorage.getItem('gh_seen')) dd.classList.add('seen'); } catch (e) {}
+
+  btn.addEventListener('click', function (e) {
+    e.stopPropagation();                       // click toggle for touch devices
+    const open = dd.classList.toggle('open');
+    btn.setAttribute('aria-expanded', open);
+    dd.classList.add('seen');
+    try { sessionStorage.setItem('gh_seen', '1'); } catch (e) {}
   });
-}, { threshold: 0.1 });
-document.querySelectorAll('.reveal').forEach(function (el) { obs.observe(el); });
+
+  document.addEventListener('click', function () {
+    dd.classList.remove('open');
+    btn.setAttribute('aria-expanded', 'false');
+  });
+
+  dd.addEventListener('mouseenter', () => dd.classList.add('seen'));
+})();
+
+/* ═══════════════════════════════════════════════════════════════
+   AUTO REFRESH — reloads the page every 5 seconds.
+   To protect people mid-booking, a tick is skipped (and retried
+   5 seconds later) while any of these is true:
+     - the tab is hidden or the device is offline
+     - the visitor is typing in / has focus on a field
+     - they have changed any form field or picked a calendar date
+     - the recording-suite popup, mobile menu, Gang Hub dropdown
+       or photo viewer is open
+   Opt a page out completely with:  <body data-no-refresh>
+   or  window.SG_NO_AUTO_REFRESH = true;
+═══════════════════════════════════════════════════════════════ */
+(function () {
+  const INTERVAL_MS = 5000;
+  let dirty = false;
+
+  // Remember that the visitor has started filling something in
+  ['input', 'change'].forEach(function (evt) {
+    document.addEventListener(evt, function (e) {
+      if (e.isTrusted && e.target.closest && e.target.closest('form')) dirty = true;
+    }, true);
+  });
+  document.addEventListener('click', function (e) {
+    if (e.isTrusted && e.target.closest &&
+        e.target.closest('.cal-day:not(.empty):not(.past), #recurringToggle')) dirty = true;
+  }, true);
+
+  function isVisible(el) {
+    return !!el && getComputedStyle(el).display !== 'none';
+  }
+
+  function shouldSkip() {
+    if (window.SG_NO_AUTO_REFRESH || document.body.hasAttribute('data-no-refresh')) return true;
+    if (document.hidden) return true;                       // background tab
+    if (navigator.onLine === false) return true;            // avoid the browser's offline error page
+    if (dirty) return true;                                 // unfinished form / chosen date
+
+    const a = document.activeElement;
+    if (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) return true;
+
+    if (isVisible(document.getElementById('recording-modal'))) return true;
+    if (document.querySelector('#mobileMenu.open, #gangHub.open, .lb.open')) return true;
+
+    return false;
+  }
+
+  setInterval(function () {
+    if (!shouldSkip()) window.location.reload();
+  }, INTERVAL_MS);
+})();
 </script>
+
 @stack('scripts')
 </body>
 </html>

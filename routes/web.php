@@ -6,6 +6,8 @@ use App\Http\Controllers\BookingController;
 use App\Http\Controllers\AdminAuthController;
 use App\Http\Controllers\Auth\LoginController;
 
+  Route::view('/sg-events', 'bookings.sg-events')->name('sg-events');
+    Route::view('/learn', 'bookings.learn')->name('learn');
 // ── Public routes ────────────────────────────────────────────────────
 Route::get('/',     [BookingController::class, 'index'])->name('home');
 
