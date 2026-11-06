@@ -502,57 +502,6 @@ function toggleTheme() {
 
   dd.addEventListener('mouseenter', () => dd.classList.add('seen'));
 })();
-
-/* ═══════════════════════════════════════════════════════════════
-   AUTO REFRESH — reloads the page every 5 seconds.
-   To protect people mid-booking, a tick is skipped (and retried
-   5 seconds later) while any of these is true:
-     - the tab is hidden or the device is offline
-     - the visitor is typing in / has focus on a field
-     - they have changed any form field or picked a calendar date
-     - the recording-suite popup, mobile menu, Gang Hub dropdown
-       or photo viewer is open
-   Opt a page out completely with:  <body data-no-refresh>
-   or  window.SG_NO_AUTO_REFRESH = true;
-═══════════════════════════════════════════════════════════════ */
-(function () {
-  const INTERVAL_MS = 5000;
-  let dirty = false;
-
-  // Remember that the visitor has started filling something in
-  ['input', 'change'].forEach(function (evt) {
-    document.addEventListener(evt, function (e) {
-      if (e.isTrusted && e.target.closest && e.target.closest('form')) dirty = true;
-    }, true);
-  });
-  document.addEventListener('click', function (e) {
-    if (e.isTrusted && e.target.closest &&
-        e.target.closest('.cal-day:not(.empty):not(.past), #recurringToggle')) dirty = true;
-  }, true);
-
-  function isVisible(el) {
-    return !!el && getComputedStyle(el).display !== 'none';
-  }
-
-  function shouldSkip() {
-    if (window.SG_NO_AUTO_REFRESH || document.body.hasAttribute('data-no-refresh')) return true;
-    if (document.hidden) return true;                       // background tab
-    if (navigator.onLine === false) return true;            // avoid the browser's offline error page
-    if (dirty) return true;                                 // unfinished form / chosen date
-
-    const a = document.activeElement;
-    if (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) return true;
-
-    if (isVisible(document.getElementById('recording-modal'))) return true;
-    if (document.querySelector('#mobileMenu.open, #gangHub.open, .lb.open')) return true;
-
-    return false;
-  }
-
-  setInterval(function () {
-    if (!shouldSkip()) window.location.reload();
-  }, INTERVAL_MS);
-})();
 </script>
 
 @stack('scripts')
