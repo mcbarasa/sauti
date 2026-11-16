@@ -223,17 +223,17 @@ public function recurringGroup()
     }
 
     // Hourly rate (default / fallback rate, used when no room is given)
-const DEPOSIT_RATE_PER_HOUR = 350;
+const DEPOSIT_RATE_PER_HOUR = 700;
 
     // ─── Per-room hourly rates ───────────────────────────────────────────
     // Recording Suite (room-c) bills at a premium rate; every other room
     // bills at the standard deposit rate. Add/adjust rooms here only.
     public static array $roomRates = [
-        'room-a' => 350,   // Rehearsal – (Band)
-        'room-b' => 350,   // Rehearsal – (Solo)
+        'room-a' => 700,   // Rehearsal – (Band)
+        'room-b' => 700,   // Rehearsal – (Solo)
         'room-c' => 3000,  // Recording – Suite
         'room-d' => 1000,   // Lesson – Instrument
-        'room-e' => 350,   // Room 1 – Podcast/Production
+        'room-e' => 700,   // Room 1 – Podcast/Production
     ];
 
 public static function computeAmount(int|string $duration, ?string $room = null): float

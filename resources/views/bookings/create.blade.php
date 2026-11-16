@@ -489,13 +489,13 @@ initCalendar();
 // Changing the room AFTER duration is already filled also recomputes
 // immediately via the roomSelect.onchange handler above.
 const ROOM_RATES = {
-  'room-a': 350,   // Rehearsal – (Band)
-  'room-b': 350,   // Rehearsal – (Solo)
+  'room-a': 700,   // Rehearsal – (Band)
+  'room-b': 700,   // Rehearsal – (Solo)
   'room-c': 3000,  // Recording – Suite
   'room-d': 1000,   // Lesson – Instrument
-  'room-e': 350,   // Room 1 – Podcast/Production
+  'room-e': 700,   // Room 1 – Podcast/Production
 };
-const DEFAULT_RATE = 350;
+const DEFAULT_RATE = 700;
 
 function computeAmount() {
   const input  = document.getElementById('durationInput');
