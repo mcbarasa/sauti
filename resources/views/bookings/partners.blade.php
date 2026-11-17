@@ -15,7 +15,7 @@
             'wide'  => true,
             'desc'  => 'Where kids learn music, chess, computing and more. Hands-on lessons that turn curiosity into real skill.',
             'chips' => ['Music', 'Chess', 'Computing'],
-            'url'   => '#',
+            'url'   => 'https://lkc.codes/',
         ],
         [
             'name'  => 'BV Labs',
@@ -25,7 +25,8 @@
             'wide'  => false,
             'desc'  => 'A technology company building software and digital solutions.',
             'chips' => [],
-            'url'   => '#',
+            // TODO: replace with the real BV Labs LinkedIn page
+            'url'   => 'https://www.linkedin.com/company/108200364/admin/dashboard/',
         ],
         [
             'name'  => 'SG Events',
@@ -45,7 +46,8 @@
             'wide'  => false,
             'desc'  => 'A community gathering to study the Word, grow together and encourage each other.',
             'chips' => [],
-            'url'   => '#',
+            // TODO: replace with the real Instagram page
+            'url'   => 'https://www.instagram.com/sg.biblestudy/',
         ],
         [
             'name'  => 'LKC Chess Club',
@@ -55,7 +57,8 @@
             'wide'  => false,
             'desc'  => 'Sharpen your game, meet fellow players and play for the love of chess.',
             'chips' => [],
-            'url'   => '#',
+            // TODO: replace with the real Instagram page
+            'url'   => 'https://www.instagram.com/YOUR_LKC_CHESS_CLUB_HANDLE/',
         ],
         [
             'name'  => 'Karen Village',
@@ -65,7 +68,7 @@
             'wide'  => true,
             'desc'  => 'Our home base. Karen Village hosts the studio and gives the gang a space to create, learn and gather.',
             'chips' => ['Host venue', 'Nairobi'],
-            'url'   => '#contact',
+            'url'   => 'https://www.karen-village.com/',
         ],
         [
             'name'  => 'Tukutane Rest',
@@ -75,7 +78,8 @@
             'wide'  => false,
             'desc'  => 'A place to meet, relax and unwind after the session.',
             'chips' => [],
-            'url'   => '#',
+            // TODO: replace with the real Instagram page
+            'url'   => 'https://www.instagram.com/sautigangstudios/',
         ],
     ];
 @endphp
