@@ -71,15 +71,15 @@
             'url'   => 'https://www.karen-village.com/',
         ],
         [
-            'name'  => 'Tukutane Rest',
+            'name'  => 'Kutana Sundays',
             'tag'   => 'Hangout',
             'icon'  => '☕',
             'color' => '#FF8A3D',
             'wide'  => false,
-            'desc'  => 'A place to meet, relax and unwind after the session.',
+            'desc'  => ' Come play, show your work, share ideas and meet the people making things around you.',
             'chips' => [],
             // TODO: replace with the real Instagram page
-            'url'   => 'https://www.instagram.com/sautigangstudios/',
+            'url'   => 'https://kutana.sg.ke/',
         ],
     ];
 @endphp
