@@ -6,8 +6,8 @@ use App\Http\Controllers\BookingController;
 use App\Http\Controllers\AdminAuthController;
 use App\Http\Controllers\Auth\LoginController;
 
-  Route::view('/sg-events', 'bookings.sg-events')->name('sg-events');
-    Route::view('/learn', 'bookings.learn')->name('learn');
+Route::view('/sg-events', 'bookings.sg-events')->name('sg-events');
+Route::view('/learn', 'bookings.learn')->name('learn');
 // ── Public routes ────────────────────────────────────────────────────
 Route::get('/',     [BookingController::class, 'index'])->name('home');
 
@@ -16,6 +16,7 @@ Route::get('/book',  [BookingController::class, 'create'])->name('bookings.creat
 Route::post('/book',                  [BookingController::class, 'initiate'])->name('bookings.initiate');
 Route::get('/book/check-payment',     [BookingController::class, 'checkMpesaPayment'])->name('bookings.check-payment');
 Route::post('/mpesa/callback',        [BookingController::class, 'mpesaCallback'])->name('mpesa.callback');
+Route::get('/book/payment', [BookingController::class, 'resumePayment'])->name('bookings.payment.resume');
 
 Route::get('/bookings/{booking}', [BookingController::class, 'show'])->name('bookings.show');
 Route::get('/api/slots', [BookingController::class, 'slotsForMonth'])->name('bookings.slots');
@@ -36,7 +37,7 @@ Route::post('/sg-logout', [AdminAuthController::class, 'logout'])->name('admin.l
 // Add this INSIDE your auth middleware group
 Route::middleware('auth')->group(function () {
     Route::get('/api/live-timers', [BookingController::class, 'liveTimers'])->name('bookings.live-timers');
-    
+
     // ... your other protected routes
 });
 

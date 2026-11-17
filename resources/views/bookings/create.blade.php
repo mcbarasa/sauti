@@ -777,5 +777,92 @@ document.getElementById('recording-modal').addEventListener('click', function(e)
 document.addEventListener('keydown', function(e) {
   if (e.key === 'Escape') closeRecordingInfo();
 });
+
+// ── Remember booking details so a reload / failed payment never loses them ──
+const DRAFT_KEY = 'sauti_booking_draft_v1';
+const DRAFT_TTL = 6 * 60 * 60 * 1000; // keep for 6 hours
+
+function saveDraft() {
+  try {
+    const g = id => document.getElementById(id).value;
+    localStorage.setItem(DRAFT_KEY, JSON.stringify({
+      t: Date.now(),
+      booking_date: g('bookingDateInput'),
+      room:         g('roomSelect'),
+      start_time:   g('startTime'),
+      duration:     g('durationInput'),
+      name:         document.querySelector('#bookingForm [name="name"]').value,
+      phone:        g('phoneInput'),
+      notes:        document.querySelector('#bookingForm [name="notes"]').value,
+    }));
+  } catch (e) {}
+}
+
+function restoreDraft() {
+  try {
+    // If the server sent back old() values (validation error), those win.
+    if (document.getElementById('bookingDateInput').value) return;
+
+    const raw = localStorage.getItem(DRAFT_KEY);
+    if (!raw) return;
+    const d = JSON.parse(raw);
+    if (!d || Date.now() - d.t > DRAFT_TTL) { localStorage.removeItem(DRAFT_KEY); return; }
+
+    const set = (id, v) => { if (v !== undefined && v !== null) document.getElementById(id).value = v; };
+
+    // Date → calendar
+    if (d.booking_date) {
+      const [y, m, day] = d.booking_date.split('-').map(Number);
+      const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      // ignore dates that are already in the past
+      const today = new Date(); today.setHours(0,0,0,0);
+      if (new Date(y, m - 1, day) >= today) {
+        calYear = y; calMonth = m - 1;
+        selectedDate = { d: day, m: m - 1, y };
+        set('bookingDateInput', d.booking_date);
+        set('selectedDateDisplay', `${day} ${months[m - 1]} ${y}`);
+      }
+    }
+
+    set('roomSelect', d.room);
+    renderCalendar();
+    if (document.getElementById('bookingDateInput').value) {
+      filterTimeSlots(document.getElementById('bookingDateInput').value);
+    }
+
+    set('startTime', d.start_time);
+    // if that slot got booked/passed in the meantime, filterTimeSlots disabled it
+    const st = document.getElementById('startTime');
+    if (st.value && st.options[st.selectedIndex]?.disabled) st.value = '';
+
+    set('durationInput', d.duration);
+    document.querySelector('#bookingForm [name="name"]').value  = d.name  || '';
+    document.querySelector('#bookingForm [name="notes"]').value = d.notes || '';
+    set('phoneInput', d.phone);
+
+    computeAmount();
+  } catch (e) {}
+}
+
+restoreDraft();
+
+// Save on every change
+['bookingDateInput','roomSelect','startTime','durationInput','phoneInput']
+  .forEach(id => {
+    const el = document.getElementById(id);
+    el.addEventListener('input', saveDraft);
+    el.addEventListener('change', saveDraft);
+  });
+document.querySelectorAll('#bookingForm [name="name"], #bookingForm [name="notes"]')
+  .forEach(el => el.addEventListener('input', saveDraft));
+
+// Calendar clicks set the hidden date input programmatically, so save there too
+const _selectDate = selectDate;
+selectDate = function (d, m, y) { _selectDate(d, m, y); saveDraft(); };
+
+// Clear the draft ONLY when the booking was actually paid/confirmed
+@if(session('success'))
+  try { localStorage.removeItem(DRAFT_KEY); } catch (e) {}
+@endif
 </script>
 @endpush

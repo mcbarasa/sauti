@@ -44,15 +44,6 @@
     <p id="attempt-text" style="font-size:0.78rem;color:var(--gray);margin-bottom:1.5rem;">
       Checking payment status…
     </p>
-
-    <div style="display:flex;gap:0.75rem;justify-content:center;flex-wrap:wrap;">
-      <a href="{{ route('bookings.create') }}" class="btn-secondary" style="font-size:0.82rem;padding:0.55rem 1.2rem;">
-        ← Try Again
-      </a>
-      <a href="{{ route('home') }}" class="btn-secondary" style="font-size:0.82rem;padding:0.55rem 1.2rem;">
-        Home
-      </a>
-    </div>
   </div>
 </div>
 </section>

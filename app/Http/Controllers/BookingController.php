@@ -95,12 +95,120 @@ class BookingController extends Controller
             'pending_booking'   => $data,
             'payment_type'      => 'single',
             'mpesa_checkout_id' => $response['CheckoutRequestID'],
+            'stk_just_sent'     => true, // so the redirect below doesn't push a 2nd STK
         ]);
 
-        return view('bookings.payment-pending', [
+        // Post/Redirect/Get: the payment page now lives on a GET URL,
+        // so reloading it never prompts "resubmit form" and never loses data.
+        return redirect()->route('bookings.payment.resume');
+    }
+
+    // ── Payment page (reload-safe) + "Try Again" ─────────────────────────
+    // GET. Called (a) right after initiate/storeRecurring (no new push),
+    // (b) when the user reloads the page, (c) when they press "Try Again".
+    // For (b) and (c) the STK push is sent again using the data held in session.
+    public function resumePayment(MpesaService $mpesa)
+    {
+        $type      = session('payment_type');
+        $pending   = $type === 'recurring' ? session('pending_recurring') : session('pending_booking');
+        $oldId     = session('mpesa_checkout_id');
+
+        // Nothing to resume (session expired / never started)
+        if (!$pending || !$type) {
+            return redirect()->route('bookings.create')
+                ->withErrors(['payment' => 'Your booking session expired. Please fill in the details again.']);
+        }
+
+        $amount = $type === 'recurring' ? $pending['total_amount'] : $pending['amount'];
+        $phone  = $pending['phone'];
+
+        $viewData = [
+            'amount'    => $amount,
+            'phone'     => $phone,
+            'retry_url' => route('bookings.payment.resume'),
+        ];
+        if ($type === 'recurring') {
+            $viewData += [
+                'is_recurring'  => true,
+                'session_count' => $pending['session_count'],
+                'amount_per'    => $pending['amount_per_session'],
+            ];
+        }
+
+        // (a) Just pushed by initiate()/storeRecurring() — show page, don't push again
+        if (session()->pull('stk_just_sent', false) && $oldId) {
+            return view('bookings.payment-pending', $viewData + ['checkoutRequestId' => $oldId]);
+        }
+
+        // Check the previous attempt first so we never double-charge
+        $oldPayment = $oldId ? MpesaPayment::where('checkout_request_id', $oldId)->first() : null;
+
+        if ($oldPayment) {
+            if ($oldPayment->status === 'completed') {
+                // Already paid — the poll will finalise the booking
+                return view('bookings.payment-pending', $viewData + ['checkoutRequestId' => $oldId]);
+            }
+
+            try {
+                $result = $mpesa->stkQuery($oldId);
+                if ((string) ($result['ResultCode'] ?? '') === '0') {
+                    $oldPayment->update(['status' => 'completed']);
+                    return view('bookings.payment-pending', $viewData + ['checkoutRequestId' => $oldId]);
+                }
+            } catch (\Exception $e) {
+                logger()->warning('Resume STK query failed: ' . $e->getMessage());
+            }
+
+            // Old attempt is dead — make sure it can't be mistaken for live
+            if ($oldPayment->status === 'pending') {
+                $oldPayment->update(['status' => 'failed']);
+            }
+        }
+
+        // Re-check the slot is still free before asking for money again
+        if ($type === 'single' && Booking::hasOverlap(
+            $pending['booking_date'], $pending['room'], $pending['start_time'], $pending['duration']
+        )) {
+            session()->forget(['pending_booking', 'payment_type', 'mpesa_checkout_id']);
+            return redirect()->route('bookings.create')
+                ->withErrors(['slot' => 'Sorry, that slot was taken in the meantime. Please choose another time.']);
+        }
+
+        // (b)/(c) Push the STK again
+        $prefix    = $type === 'recurring' ? 'SGS-REC-' : 'SGS-';
+        $reference = $prefix . strtoupper(substr(preg_replace('/\D/', '', $phone), -6)) . '-' . time();
+
+        try {
+            $response = $mpesa->stkPush($phone, (int) $amount, $reference);
+        } catch (\Exception $e) {
+            logger()->error('Resume STK Push failed: ' . $e->getMessage());
+            // Keep the pending data in session so the next reload / Try Again works
+            return view('bookings.payment-pending', $viewData + [
+                'checkoutRequestId' => $oldId,
+                'error'             => 'M-Pesa service unavailable. Please try again.',
+            ]);
+        }
+
+        if (!isset($response['CheckoutRequestID'])) {
+            return view('bookings.payment-pending', $viewData + [
+                'checkoutRequestId' => $oldId,
+                'error'             => 'Could not send the M-Pesa prompt. Please try again.',
+            ]);
+        }
+
+        MpesaPayment::create([
+            'checkout_request_id' => $response['CheckoutRequestID'],
+            'merchant_request_id' => $response['MerchantRequestID'] ?? null,
+            'phone'               => $phone,
+            'amount'              => $amount,
+            'reference'           => $reference,
+            'status'              => 'pending',
+        ]);
+
+        session(['mpesa_checkout_id' => $response['CheckoutRequestID']]);
+
+        return view('bookings.payment-pending', $viewData + [
             'checkoutRequestId' => $response['CheckoutRequestID'],
-            'amount'            => $data['amount'],
-            'phone'             => $data['phone'],
         ]);
     }
 
@@ -130,202 +238,201 @@ class BookingController extends Controller
     }
 
     // ── Frontend polls this to check payment ─────────────────────────────
-// ── Frontend polls this to check payment ─────────────────────────────
-public function checkMpesaPayment(Request $request, MpesaService $mpesa)
-{
-    $checkoutId = $request->checkout_request_id;
-    $payment    = MpesaPayment::where('checkout_request_id', $checkoutId)->first();
+    public function checkMpesaPayment(Request $request, MpesaService $mpesa)
+    {
+        $checkoutId = $request->checkout_request_id;
+        $payment    = MpesaPayment::where('checkout_request_id', $checkoutId)->first();
 
-    if (!$payment) return response()->json(['status' => 'not_found']);
+        if (!$payment) return response()->json(['status' => 'not_found']);
 
-    // ── If callback already resolved — skip querying Safaricom ───────
-    if ($payment->status === 'failed') {
-        return response()->json([
-            'status'  => 'failed',
-            'message' => 'Payment was cancelled or failed. Please try again.',
-        ]);
-    }
+        // ── If callback already resolved — skip querying Safaricom ───────
+        if ($payment->status === 'failed') {
+            return response()->json([
+                'status'  => 'failed',
+                'message' => 'Payment was cancelled or failed. Please try again.',
+            ]);
+        }
 
-    if ($payment->status !== 'completed') {
-        try {
-            $result     = $mpesa->stkQuery($checkoutId);
-            $resultCode = $result['ResultCode'] ?? null;
+        if ($payment->status !== 'completed') {
+            try {
+                $result     = $mpesa->stkQuery($checkoutId);
+                $resultCode = $result['ResultCode'] ?? null;
 
-            // Null = Safaricom hasn't processed yet — keep polling
-            if (is_null($resultCode)) {
-                return response()->json(['status' => 'pending']);
-            }
-
-            $resultCode = (string) $resultCode;
-
-            if ($resultCode === '0') {
-                $payment->update(['status' => 'completed']);
-
-            } elseif ($resultCode === '1032') {
-                // User explicitly cancelled
-                $payment->update(['status' => 'failed']);
-                return response()->json([
-                    'status'  => 'failed',
-                    'message' => 'You cancelled the M-Pesa prompt. Please try again.',
-                ]);
-
-            } elseif ($resultCode === '1037') {
-                // DS timeout — user hasn't responded yet, keep polling
-                return response()->json(['status' => 'pending']);
-
-            } elseif ($resultCode === '1') {
-                // Insufficient funds
-                $payment->update(['status' => 'failed']);
-                return response()->json([
-                    'status'  => 'failed',
-                    'message' => 'Insufficient M-Pesa balance. Please top up and try again.',
-                ]);
-
-            } else {
-                // Be lenient on early polls — Safaricom sometimes returns
-                // errors before the transaction is fully processed
-                $attempt = (int) $request->query('attempt', 1);
-                if ($attempt < 3) {
+                // Null = Safaricom hasn't processed yet — keep polling
+                if (is_null($resultCode)) {
                     return response()->json(['status' => 'pending']);
                 }
 
-                $payment->update(['status' => 'failed']);
-                return response()->json([
-                    'status'  => 'failed',
-                    'message' => $result['ResultDesc'] ?? 'Payment failed. Please try again.',
+                $resultCode = (string) $resultCode;
+
+                if ($resultCode === '0') {
+                    $payment->update(['status' => 'completed']);
+
+                } elseif ($resultCode === '1032') {
+                    // User explicitly cancelled
+                    $payment->update(['status' => 'failed']);
+                    return response()->json([
+                        'status'  => 'failed',
+                        'message' => 'You cancelled the M-Pesa prompt. Please try again.',
+                    ]);
+
+                } elseif ($resultCode === '1037') {
+                    // DS timeout — user hasn't responded yet, keep polling
+                    return response()->json(['status' => 'pending']);
+
+                } elseif ($resultCode === '1') {
+                    // Insufficient funds
+                    $payment->update(['status' => 'failed']);
+                    return response()->json([
+                        'status'  => 'failed',
+                        'message' => 'Insufficient M-Pesa balance. Please top up and try again.',
+                    ]);
+
+                } else {
+                    // Be lenient on early polls — Safaricom sometimes returns
+                    // errors before the transaction is fully processed
+                    $attempt = (int) $request->query('attempt', 1);
+                    if ($attempt < 3) {
+                        return response()->json(['status' => 'pending']);
+                    }
+
+                    $payment->update(['status' => 'failed']);
+                    return response()->json([
+                        'status'  => 'failed',
+                        'message' => $result['ResultDesc'] ?? 'Payment failed. Please try again.',
+                    ]);
+                }
+
+            } catch (\Exception $e) {
+                // Network/timeout error — don't fail the payment, keep polling
+                logger()->error('STK Query error: ' . $e->getMessage());
+                return response()->json(['status' => 'pending']);
+            }
+        }
+
+        $payment->refresh();
+
+        // ── OVERTIME PAYMENT — booking_id already set, just needs checkout ──
+        if ($payment->status === 'completed' && $payment->booking_id) {
+            $booking = Booking::find($payment->booking_id);
+
+            if ($booking && $booking->status !== 'lapsed') {
+                $now = now('Africa/Nairobi');
+                $booking->update([
+                    'status'         => 'lapsed',
+                    'checked_out_at' => $now,
                 ]);
             }
 
-        } catch (\Exception $e) {
-            // Network/timeout error — don't fail the payment, keep polling
-            logger()->error('STK Query error: ' . $e->getMessage());
-            return response()->json(['status' => 'pending']);
-        }
-    }
-
-    $payment->refresh();
-
-    // ── OVERTIME PAYMENT — booking_id already set, just needs checkout ──
-    if ($payment->status === 'completed' && $payment->booking_id) {
-        $booking = Booking::find($payment->booking_id);
-
-        if ($booking && $booking->status !== 'lapsed') {
-            $now = now('Africa/Nairobi');
-            $booking->update([
-                'status'         => 'lapsed',
-                'checked_out_at' => $now,
-            ]);
-        }
-
-        return response()->json([
-            'status'     => 'completed',
-            'booking_id' => $payment->booking_id,
-        ]);
-    }
-
-    // ── NEW BOOKING (single or recurring) ─────────────────────────────
-    if ($payment->status === 'completed' && !$payment->booking_id) {
-        $paymentType   = session('payment_type', 'single');
-        $recurringData = session('pending_recurring');
-        $bookingData   = session('pending_booking');
-
-        // ── RECURRING ────────────────────────────────────────────────
-        if ($paymentType === 'recurring' && $recurringData) {
-            $startDate = Carbon::parse($recurringData['booking_date']);
-            $endDate   = Carbon::parse($recurringData['recurrence_end']);
-            $frequency = $recurringData['recurrence_frequency'];
-            $groupId   = Str::uuid()->toString();
-            $created   = [];
-
-            $current = $startDate->copy();
-            while ($current->lte($endDate)) {
-                $outsideHours = Booking::isOutsideOperatingHours(
-                    $current->toDateString(),
-                    $recurringData['start_time'],
-                    $recurringData['duration']
-                );
-                $isTaken = $outsideHours || Booking::hasOverlap(
-                    $current->toDateString(),
-                    $recurringData['room'],
-                    $recurringData['start_time'],
-                    $recurringData['duration']
-                );
-
-                if (!$isTaken) {
-                    $booking = Booking::create([
-                        'name'                 => $recurringData['name'],
-                        'phone'                => $recurringData['phone'],
-                        'booking_date'         => $current->toDateString(),
-                        'room'                 => $recurringData['room'],
-                        'start_time'           => $recurringData['start_time'],
-                        'duration'             => $recurringData['duration'],
-                        'notes'                => $recurringData['notes'] ?? null,
-                        'amount'               => $recurringData['amount_per_session'],
-                        'status'               => 'confirmed',
-                        'is_recurring'         => true,
-                        'recurrence_group_id'  => $groupId,
-                        'recurrence_frequency' => $frequency,
-                    ]);
-                    $created[] = $booking;
-                }
-
-                $current = match($frequency) {
-                    'daily'    => $current->addDay(),
-                    'weekly'   => $current->addWeek(),
-                    'biweekly' => $current->addWeeks(2),
-                    'monthly'  => $current->addMonth(),
-                };
-            }
-
-            if (!empty($created)) {
-                $payment->update(['booking_id' => $created[0]->id]);
-            }
-
-            session()->forget([
-                'pending_recurring', 'pending_booking',
-                'mpesa_checkout_id', 'payment_type',
-                'pending_booking_session_count',
-            ]);
-
-            return response()->json([
-                'status'       => 'completed',
-                'is_recurring' => true,
-                'group_id'     => $groupId,
-                'count'        => count($created),
-                'redirect_url' => route('bookings.recurring.confirmation', ['group' => $groupId]),
-            ]);
-        }
-
-        // ── SINGLE BOOKING ────────────────────────────────────────────
-        if ($bookingData) {
-            if (Booking::hasOverlap(
-                $bookingData['booking_date'],
-                $bookingData['room'],
-                $bookingData['start_time'],
-                $bookingData['duration']
-            )) {
-                return response()->json(['status' => 'slot_taken']);
-            }
-
-            $booking = Booking::create(array_merge($bookingData, ['status' => 'confirmed']));
-            $payment->update(['booking_id' => $booking->id]);
-
-            session()->forget(['pending_booking', 'mpesa_checkout_id', 'payment_type']);
-
             return response()->json([
                 'status'     => 'completed',
-                'booking_id' => $booking->id,
+                'booking_id' => $payment->booking_id,
             ]);
         }
 
-        return response()->json([
-            'status'  => 'session_expired',
-            'message' => 'Session expired. Contact us on 0733 590 438 to confirm your booking.',
-        ]);
-    }
+        // ── NEW BOOKING (single or recurring) ─────────────────────────────
+        if ($payment->status === 'completed' && !$payment->booking_id) {
+            $paymentType   = session('payment_type', 'single');
+            $recurringData = session('pending_recurring');
+            $bookingData   = session('pending_booking');
 
-    return response()->json(['status' => $payment->status]);
-}
+            // ── RECURRING ────────────────────────────────────────────────
+            if ($paymentType === 'recurring' && $recurringData) {
+                $startDate = Carbon::parse($recurringData['booking_date']);
+                $endDate   = Carbon::parse($recurringData['recurrence_end']);
+                $frequency = $recurringData['recurrence_frequency'];
+                $groupId   = Str::uuid()->toString();
+                $created   = [];
+
+                $current = $startDate->copy();
+                while ($current->lte($endDate)) {
+                    $outsideHours = Booking::isOutsideOperatingHours(
+                        $current->toDateString(),
+                        $recurringData['start_time'],
+                        $recurringData['duration']
+                    );
+                    $isTaken = $outsideHours || Booking::hasOverlap(
+                        $current->toDateString(),
+                        $recurringData['room'],
+                        $recurringData['start_time'],
+                        $recurringData['duration']
+                    );
+
+                    if (!$isTaken) {
+                        $booking = Booking::create([
+                            'name'                 => $recurringData['name'],
+                            'phone'                => $recurringData['phone'],
+                            'booking_date'         => $current->toDateString(),
+                            'room'                 => $recurringData['room'],
+                            'start_time'           => $recurringData['start_time'],
+                            'duration'             => $recurringData['duration'],
+                            'notes'                => $recurringData['notes'] ?? null,
+                            'amount'               => $recurringData['amount_per_session'],
+                            'status'               => 'confirmed',
+                            'is_recurring'         => true,
+                            'recurrence_group_id'  => $groupId,
+                            'recurrence_frequency' => $frequency,
+                        ]);
+                        $created[] = $booking;
+                    }
+
+                    $current = match($frequency) {
+                        'daily'    => $current->addDay(),
+                        'weekly'   => $current->addWeek(),
+                        'biweekly' => $current->addWeeks(2),
+                        'monthly'  => $current->addMonth(),
+                    };
+                }
+
+                if (!empty($created)) {
+                    $payment->update(['booking_id' => $created[0]->id]);
+                }
+
+                session()->forget([
+                    'pending_recurring', 'pending_booking',
+                    'mpesa_checkout_id', 'payment_type',
+                    'pending_booking_session_count', 'stk_just_sent',
+                ]);
+
+                return response()->json([
+                    'status'       => 'completed',
+                    'is_recurring' => true,
+                    'group_id'     => $groupId,
+                    'count'        => count($created),
+                    'redirect_url' => route('bookings.recurring.confirmation', ['group' => $groupId]),
+                ]);
+            }
+
+            // ── SINGLE BOOKING ────────────────────────────────────────────
+            if ($bookingData) {
+                if (Booking::hasOverlap(
+                    $bookingData['booking_date'],
+                    $bookingData['room'],
+                    $bookingData['start_time'],
+                    $bookingData['duration']
+                )) {
+                    return response()->json(['status' => 'slot_taken']);
+                }
+
+                $booking = Booking::create(array_merge($bookingData, ['status' => 'confirmed']));
+                $payment->update(['booking_id' => $booking->id]);
+
+                session()->forget(['pending_booking', 'mpesa_checkout_id', 'payment_type', 'stk_just_sent']);
+
+                return response()->json([
+                    'status'     => 'completed',
+                    'booking_id' => $booking->id,
+                ]);
+            }
+
+            return response()->json([
+                'status'  => 'session_expired',
+                'message' => 'Session expired. Contact us on 0733 590 438 to confirm your booking.',
+            ]);
+        }
+
+        return response()->json(['status' => $payment->status]);
+    }
 
     // ── Show single booking ──────────────────────────────────────────────
     public function show(Booking $booking)
@@ -437,117 +544,117 @@ public function checkMpesaPayment(Request $request, MpesaService $mpesa)
     }
 
     // ── Checkout a session ───────────────────────────────────────────────
-public function checkout(Booking $booking)
-{
-    if (!in_array($booking->status, ['confirmed', 'lapsed'])) {
-        return response()->json([
-            'success' => false,
-            'message' => 'This booking cannot be checked out.',
-        ], 422);
-    }
+    public function checkout(Booking $booking)
+    {
+        if (!in_array($booking->status, ['confirmed', 'lapsed'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'This booking cannot be checked out.',
+            ], 422);
+        }
 
-    $now        = now('Africa/Nairobi');
-    $sessionEnd = Carbon::parse(
-        $booking->booking_date->format('Y-m-d') . ' ' . $booking->start_time,
-        'Africa/Nairobi'
-    )->addMinutes($booking->duration_minutes);
+        $now        = now('Africa/Nairobi');
+        $sessionEnd = Carbon::parse(
+            $booking->booking_date->format('Y-m-d') . ' ' . $booking->start_time,
+            'Africa/Nairobi'
+        )->addMinutes($booking->duration_minutes);
 
-    $isOvertime   = $now->gt($sessionEnd);
-    $overtimeMins = $isOvertime ? (int) $sessionEnd->diffInMinutes($now) : 0;
-    $overtimeCost = $isOvertime ? (int) round($overtimeMins * (700 / 60)) : 0;
+        $isOvertime   = $now->gt($sessionEnd);
+        $overtimeMins = $isOvertime ? (int) $sessionEnd->diffInMinutes($now) : 0;
+        $overtimeCost = $isOvertime ? (int) round($overtimeMins * (700 / 60)) : 0;
 
-    // ── Overtime STK Push ─────────────────────────────────────────────
-    if ($isOvertime && $overtimeCost > 0) {
-        $reference = 'SGS-OT-' . $booking->id . '-' . time();
+        // ── Overtime STK Push ─────────────────────────────────────────────
+        if ($isOvertime && $overtimeCost > 0) {
+            $reference = 'SGS-OT-' . $booking->id . '-' . time();
 
-        try {
-            $mpesa    = app(\App\Services\MpesaService::class);
-            $response = $mpesa->stkPush($booking->phone, (int) $overtimeCost, $reference);
+            try {
+                $mpesa    = app(\App\Services\MpesaService::class);
+                $response = $mpesa->stkPush($booking->phone, (int) $overtimeCost, $reference);
 
-            if (!isset($response['CheckoutRequestID'])) {
+                if (!isset($response['CheckoutRequestID'])) {
+                    return response()->json([
+                        'success'          => false,
+                        'requires_payment' => true,
+                        'overtime_minutes' => $overtimeMins,
+                        'overtime_cost'    => $overtimeCost,
+                        'message'          => 'Could not initiate M-Pesa prompt. Collect KES ' . number_format($overtimeCost) . ' manually.',
+                    ], 502);
+                }
+
+                MpesaPayment::create([
+                    'checkout_request_id' => $response['CheckoutRequestID'],
+                    'merchant_request_id' => $response['MerchantRequestID'] ?? null,
+                    'phone'               => $booking->phone,
+                    'amount'              => $overtimeCost,
+                    'reference'           => $reference,
+                    'status'              => 'pending',
+                    'booking_id'          => $booking->id,
+                ]);
+
+                // Mark overtime on booking but keep status until payment confirmed
+                $booking->update([
+                    'overtime_minutes' => $overtimeMins,
+                    'overtime_amount'  => $overtimeCost,
+                ]);
+
+                return response()->json([
+                    'success'             => false,
+                    'requires_payment'    => true,
+                    'overtime_minutes'    => $overtimeMins,
+                    'overtime_cost'       => $overtimeCost,
+                    'checkout_request_id' => $response['CheckoutRequestID'],
+                    'phone'               => $booking->phone,
+                    'message'             => 'M-Pesa prompt sent to ' . $booking->phone . ' for KES ' . number_format($overtimeCost) . ' (' . $overtimeMins . ' mins overtime). Waiting for payment…',
+                ]);
+
+            } catch (\Exception $e) {
+                logger()->error('Overtime STK Push failed: ' . $e->getMessage());
                 return response()->json([
                     'success'          => false,
                     'requires_payment' => true,
                     'overtime_minutes' => $overtimeMins,
                     'overtime_cost'    => $overtimeCost,
-                    'message'          => 'Could not initiate M-Pesa prompt. Collect KES ' . number_format($overtimeCost) . ' manually.',
+                    'message'          => 'M-Pesa unavailable. Collect KES ' . number_format($overtimeCost) . ' manually before checking out.',
                 ], 502);
             }
-
-            MpesaPayment::create([
-                'checkout_request_id' => $response['CheckoutRequestID'],
-                'merchant_request_id' => $response['MerchantRequestID'] ?? null,
-                'phone'               => $booking->phone,
-                'amount'              => $overtimeCost,
-                'reference'           => $reference,
-                'status'              => 'pending',
-                'booking_id'          => $booking->id,
-            ]);
-
-            // Mark overtime on booking but keep status until payment confirmed
-            $booking->update([
-                'overtime_minutes' => $overtimeMins,
-                'overtime_amount'  => $overtimeCost,
-            ]);
-
-            return response()->json([
-                'success'             => false,
-                'requires_payment'    => true,
-                'overtime_minutes'    => $overtimeMins,
-                'overtime_cost'       => $overtimeCost,
-                'checkout_request_id' => $response['CheckoutRequestID'],
-                'phone'               => $booking->phone,
-                'message'             => 'M-Pesa prompt sent to ' . $booking->phone . ' for KES ' . number_format($overtimeCost) . ' (' . $overtimeMins . ' mins overtime). Waiting for payment…',
-            ]);
-
-        } catch (\Exception $e) {
-            logger()->error('Overtime STK Push failed: ' . $e->getMessage());
-            return response()->json([
-                'success'          => false,
-                'requires_payment' => true,
-                'overtime_minutes' => $overtimeMins,
-                'overtime_cost'    => $overtimeCost,
-                'message'          => 'M-Pesa unavailable. Collect KES ' . number_format($overtimeCost) . ' manually before checking out.',
-            ], 502);
         }
+
+        // ── No overtime — complete checkout immediately ───────────────────
+        $booking->update([
+            'status'           => 'lapsed',
+            'checked_out_at'   => $now,
+            'overtime_minutes' => 0,
+            'overtime_amount'  => 0,
+        ]);
+
+        return response()->json([
+            'success'          => true,
+            'booking_id'       => $booking->id,
+            'name'             => $booking->name,
+            'checked_out_at'   => $now->format('H:i:s'),
+            'was_overtime'     => false,
+            'overtime_minutes' => 0,
+            'overtime_cost'    => 0,
+            'message'          => "Checked out {$booking->name} on time ✓",
+        ]);
     }
 
-    // ── No overtime — complete checkout immediately ───────────────────
-    $booking->update([
-        'status'           => 'lapsed',
-        'checked_out_at'   => $now,
-        'overtime_minutes' => 0,
-        'overtime_amount'  => 0,
-    ]);
+    // ── Finalise checkout after overtime payment confirmed ───────────────
+    public function checkoutConfirm(Booking $booking)
+    {
+        $now = now('Africa/Nairobi');
 
-    return response()->json([
-        'success'          => true,
-        'booking_id'       => $booking->id,
-        'name'             => $booking->name,
-        'checked_out_at'   => $now->format('H:i:s'),
-        'was_overtime'     => false,
-        'overtime_minutes' => 0,
-        'overtime_cost'    => 0,
-        'message'          => "Checked out {$booking->name} on time ✓",
-    ]);
-}
+        $booking->update([
+            'status'         => 'lapsed',
+            'checked_out_at' => $now,
+        ]);
 
-// ── Finalise checkout after overtime payment confirmed ───────────────
-public function checkoutConfirm(Booking $booking)
-{
-    $now = now('Africa/Nairobi');
-
-    $booking->update([
-        'status'         => 'lapsed',
-        'checked_out_at' => $now,
-    ]);
-
-    return response()->json([
-        'success'        => true,
-        'name'           => $booking->name,
-        'checked_out_at' => $now->format('H:i:s'),
-    ]);
-}
+        return response()->json([
+            'success'        => true,
+            'name'           => $booking->name,
+            'checked_out_at' => $now->format('H:i:s'),
+        ]);
+    }
 
     // ── Preview recurring slots ──────────────────────────────────────────
     public function previewRecurring(Request $request)
@@ -573,7 +680,7 @@ public function checkoutConfirm(Booking $booking)
             while ($current->lte($endDate)) {
                 $dates[]  = $current->copy();
                 $current  = match($frequency) {
-                    'daily' => $current->addDay(),
+                    'daily'    => $current->addDay(),
                     'weekly'   => $current->addWeek(),
                     'biweekly' => $current->addWeeks(2),
                     'monthly'  => $current->addMonth(),
@@ -604,7 +711,7 @@ public function checkoutConfirm(Booking $booking)
                 'amount_per'      => $amount,
                 'total_amount'    => $totalAmount,
                 'frequency_label' => match($frequency) {
-                    'daily' => "Daily",
+                    'daily'    => 'Daily',
                     'weekly'   => 'Weekly',
                     'biweekly' => 'Every 2 Weeks',
                     'monthly'  => 'Monthly',
@@ -645,7 +752,7 @@ public function checkoutConfirm(Booking $booking)
         while ($current->lte($endDate)) {
             $dates[]  = $current->copy();
             $current  = match($frequency) {
-                'daily' => $current->addDay(),
+                'daily'    => $current->addDay(),
                 'weekly'   => $current->addWeek(),
                 'biweekly' => $current->addWeeks(2),
                 'monthly'  => $current->addMonth(),
@@ -662,7 +769,7 @@ public function checkoutConfirm(Booking $booking)
         $totalAmount      = count($availableDates) * $amountPerSession;
 
         if ($totalAmount <= 0) {
-            return back()->withErrors(['slot' => 'No available slots found for the selected dates.']);
+            return back()->withInput()->withErrors(['slot' => 'No available slots found for the selected dates.']);
         }
 
         $reference = 'SGS-REC-' . strtoupper(substr(preg_replace('/\D/', '', $request->phone), -6)) . '-' . time();
@@ -707,19 +814,13 @@ public function checkoutConfirm(Booking $booking)
                 'total_amount'         => $totalAmount,
                 'session_count'        => count($availableDates),
             ],
-            'payment_type'                    => 'recurring',
-            'mpesa_checkout_id'               => $response['CheckoutRequestID'],
-            'pending_booking_session_count'   => count($availableDates),
+            'payment_type'                  => 'recurring',
+            'mpesa_checkout_id'             => $response['CheckoutRequestID'],
+            'pending_booking_session_count' => count($availableDates),
+            'stk_just_sent'                 => true,
         ]);
 
-        return view('bookings.payment-pending', [
-            'checkoutRequestId' => $response['CheckoutRequestID'],
-            'amount'            => $totalAmount,
-            'phone'             => $request->phone,
-            'is_recurring'      => true,
-            'session_count'     => count($availableDates),
-            'amount_per'        => $amountPerSession,
-        ]);
+        return redirect()->route('bookings.payment.resume');
     }
 
     // ── Recurring confirmation page ──────────────────────────────────────
@@ -734,13 +835,13 @@ public function checkoutConfirm(Booking $booking)
     }
 
     // ── Hard delete booking ──────────────────────────────────────────────
-public function hardDelete(Booking $booking)
-{
-    $id = $booking->id;
-    $booking->delete();
+    public function hardDelete(Booking $booking)
+    {
+        $id = $booking->id;
+        $booking->delete();
 
-    return redirect()
-        ->route('bookings.admin')
-        ->with('success', "Booking #{$id} has been permanently deleted.");
-}
+        return redirect()
+            ->route('bookings.admin')
+            ->with('success', "Booking #{$id} has been permanently deleted.");
+    }
 }
