@@ -215,6 +215,50 @@
     background: var(--yellow-bg);
   }
 
+  /* ══ SHOW MORE / LESS (NEW) ════════════════════ */
+  /* Extra artists are hidden until the grid is expanded */
+  #artists .artist-card.artist-extra { display: none; }
+  #artists .artist-grid.expanded .artist-card.artist-extra {
+    display: block;
+    animation: artistFadeUp 0.6s ease both;
+  }
+  #artists .artist-grid.expanded .artist-card.featured.artist-extra { display: block; }
+
+  @keyframes artistFadeUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  #artists .artist-more-wrap {
+    display: flex;
+    justify-content: center;
+    margin-top: 2.5rem;
+  }
+  #artists .artist-more-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    background: transparent;
+    color: var(--yellow);
+    border: 1px solid var(--yellow);
+    border-radius: 30px;
+    padding: 0.8rem 2rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.25s ease, color 0.25s ease, transform 0.25s ease;
+  }
+  #artists .artist-more-btn:hover {
+    background: var(--yellow);
+    color: #0A0A0A;
+    transform: translateY(-2px);
+  }
+  #artists .artist-more-btn i { transition: transform 0.3s ease; }
+  #artists .artist-more-btn.is-open i { transform: rotate(180deg); }
+
   /* ══ MODAL ════════════════════════════════════ */
   .artist-modal-overlay {
     position: fixed; inset: 0;
@@ -401,7 +445,6 @@
     <p class="section-sub reveal">Some of the artists who have visited and used out studios, Come rehearse with us and let the family keep on growing.</p>
 
     {{-- ── Artist Grid ── --}}
-    <div class="artist-grid">
 
       {{-- DATA: each artist --}}
       @php
@@ -409,7 +452,7 @@
         [
           'featured'     => true,
           'name'         => 'garvillomuziqq',
-          'genre'        => 'Gospel · Acoustic Guitar · Vocalist',
+          'genre'        => 'Gospel · Acoustic Guitar · Vocalist · Mc',
           'instrument'   => 'Guitar',
           'icon'         => 'fa-guitar',
           'artist_img'   => asset('art/garvillo.WebP'),
@@ -417,14 +460,14 @@
           'initials'     => 'GM',
           'color'        => 'rgba(245,197,24,0.15)',
           'text_color'   => 'var(--yellow)',
-          'bio'          => 'Nairobi\'s most versatile lead musician Piano,Guitarist(Acoustic), Vocalist, Song Writer and music arranger, Watumishi podcast host __ A podcast for musicians too where by they talk about their journey.', 
+          'bio'          => 'Nairobi\'s most versatile lead musician Piano,Guitarist(Acoustic), Mc, Vocalist, Song Writer and music arranger, Watumishi podcast host __ A podcast for musicians too where by they talk about their journey.', 
           'instagram'    => 'https://instagram.com/garvillomuziqq',
           'phone'        => '+254 707 030 935',
         ],
         [
           'featured'     => false,
           'name'         => 'walters_music',
-          'genre'        => 'Drums · Pencil Artist & Guitarist',
+          'genre'        => 'Drums · Sound Engineer · Producer · Video Editor · Graphic Designer',
           'instrument'   => 'Drums',
           'icon'         => 'fa-drum',
           'artist_img'   => asset('art/walter.WebP'),
@@ -511,11 +554,66 @@
           'instagram'    => 'https://instagram.com/irankunda.elyse',
           'phone'        => '+254 741 935 868',
         ],
+
+        
+        // [
+        //   'featured'     => false,
+        //   'name'         => 'placeholder_artist_1',
+        //   'genre'        => 'Gospel · Drums',
+        //   'instrument'   => 'Drums',
+        //   'icon'         => 'fa-drum',
+        //   'artist_img'   => asset('art/walter.WebP'),
+        //   'instrument_img'=> asset('img/drums.jpeg'),
+        //   'initials'     => 'P1',
+        //   'color'        => 'rgba(100,100,255,0.12)',
+        //   'text_color'   => '#9090FF',
+        //   'bio'          => 'Placeholder bio — replace with this artist\'s real story before going live.',
+        //   'instagram'    => 'https://instagram.com/',
+        //   'phone'        => '+254 700 000 001',
+        // ],
+        // [
+        //   'featured'     => false,
+        //   'name'         => 'placeholder_artist_2',
+        //   'genre'        => 'Gospel · Bass Guitar',
+        //   'instrument'   => 'Bass',
+        //   'icon'         => 'fa-music',
+        //   'artist_img'   => asset('art/bass.WebP'),
+        //   'instrument_img'=> asset('img/bass.jpeg'),
+        //   'initials'     => 'P2',
+        //   'color'        => 'rgba(30,180,120,0.15)',
+        //   'text_color'   => '#30C080',
+        //   'bio'          => 'Placeholder bio — replace with this artist\'s real story before going live.',
+        //   'instagram'    => 'https://instagram.com/',
+        //   'phone'        => '+254 700 000 002',
+        // ],
+        // [
+        //   'featured'     => false,
+        //   'name'         => 'placeholder_artist_3',
+        //   'genre'        => 'Gospel · Piano',
+        //   'instrument'   => 'Piano',
+        //   'icon'         => 'fa-music',
+        //   'artist_img'   => asset('art/junior.WebP'),
+        //   'instrument_img'=> asset('img/photo3.WebP'),
+        //   'initials'     => 'P3',
+        //   'color'        => 'rgba(90,158,229,0.15)',
+        //   'text_color'   => '#5A9EE5',
+        //   'bio'          => 'Placeholder bio — replace with this artist\'s real story before going live.',
+        //   'instagram'    => 'https://instagram.com/',
+        //   'phone'        => '+254 700 000 003',
+        // ],
       ];
+
+      // How many artists show before "View More" is clicked
+      // (featured card + 3 = 4). Change this number to show more/less.
+      $visibleCount = 4;
+      $extraCount   = max(count($artists) - $visibleCount, 0);
       @endphp
 
+    <div class="artist-grid" id="artistGrid">
+
       @foreach($artists as $i => $artist)
-      <div class="artist-card reveal {{ $artist['featured'] ? 'featured' : '' }}"
+      <div class="artist-card {{ $i < $visibleCount ? 'reveal' : 'artist-extra' }} {{ $artist['featured'] ? 'featured' : '' }}"
+           @if($i >= $visibleCount) style="animation-delay: {{ ($i - $visibleCount) * 0.08 }}s;" @endif
            onclick="openArtistModal({{ $i }})">
 
         {{-- Split panels --}}
@@ -578,6 +676,18 @@
       @endforeach
 
     </div>{{-- /artist-grid --}}
+
+    {{-- View more / less button --}}
+    @if($extraCount > 0)
+    <div class="artist-more-wrap">
+      <button type="button" class="artist-more-btn" id="artistMoreBtn"
+              data-count="{{ $extraCount }}" onclick="toggleArtists()">
+        <span id="artistMoreText">View More Artists ({{ $extraCount }})</span>
+        <i class="fas fa-chevron-down fa-xs"></i>
+      </button>
+    </div>
+    @endif
+
   </div>
 </section>
 
@@ -661,4 +771,22 @@ document.addEventListener('keydown', e => {
     document.body.style.overflow = '';
   }
 });
+
+// ── View more / View less toggle ──
+function toggleArtists() {
+  const grid = document.getElementById('artistGrid');
+  const btn  = document.getElementById('artistMoreBtn');
+  const text = document.getElementById('artistMoreText');
+  const open = grid.classList.toggle('expanded');
+
+  btn.classList.toggle('is-open', open);
+  text.textContent = open
+    ? 'Show Less'
+    : `View More Artists (${btn.dataset.count})`;
+
+  // When collapsing, bring the section back into view
+  if (!open) {
+    document.getElementById('artists').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+}
 </script>
