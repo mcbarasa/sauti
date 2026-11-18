@@ -58,7 +58,7 @@
             'desc'  => 'Sharpen your game, meet fellow players and play for the love of chess.',
             'chips' => [],
             // TODO: replace with the real Instagram page
-            'url'   => 'https://www.instagram.com/YOUR_LKC_CHESS_CLUB_HANDLE/',
+            'url'   => 'https://www.letschesskenya.com/',
         ],
         [
             'name'  => 'Karen Village',
