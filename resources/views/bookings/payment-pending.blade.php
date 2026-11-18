@@ -2,6 +2,12 @@
 @section('title', 'Complete M-Pesa Payment — Sauti Gang Studio')
 
 @section('content')
+@php
+    // Where "Try Again" goes. The controller passes retry_url (re-sends the STK
+    // from the saved session). Falls back to the booking form (draft is restored there).
+    $retryUrl = $retry_url ?? route('bookings.create');
+@endphp
+
 <section style="padding-top:8rem;padding-bottom:4rem;">
 <div class="container" style="max-width:520px;margin:0 auto;">
   <div style="background:var(--surface);border:1px solid var(--border-y);border-radius:8px;padding:3rem 2rem;text-align:center;box-shadow:var(--shadow);">
@@ -13,21 +19,21 @@
     </h2>
     <p style="color:var(--gray-light);margin-bottom:0.3rem;">An M-Pesa prompt has been sent to</p>
     <p style="font-size:1.1rem;font-weight:700;color:var(--text);margin-bottom:0.3rem;">{{ $phone }}</p>
-    {{-- Replace the amount line --}}
-<p style="color:var(--gray);margin-bottom:2rem;">
-  Enter your M-Pesa PIN to pay
-  <strong style="color:var(--yellow);font-size:1.2rem;">
-    KES {{ number_format($amount) }}
-  </strong>
-  @if(isset($is_recurring) && $is_recurring)
-    <br>
-    <span style="font-size:0.82rem;color:var(--gray);">
-      Covers all <strong style="color:var(--text);">{{ $session_count }}</strong>
-      recurring sessions
-      ({{ $session_count }} × KES {{ number_format($amount_per) }})
-    </span>
-  @endif
-</p>
+
+    <p style="color:var(--gray);margin-bottom:2rem;">
+      Enter your M-Pesa PIN to pay
+      <strong style="color:var(--yellow);font-size:1.2rem;">
+        KES {{ number_format($amount) }}
+      </strong>
+      @if(isset($is_recurring) && $is_recurring)
+        <br>
+        <span style="font-size:0.82rem;color:var(--gray);">
+          Covers all <strong style="color:var(--text);">{{ $session_count }}</strong>
+          recurring sessions
+          ({{ $session_count }} × KES {{ number_format($amount_per) }})
+        </span>
+      @endif
+    </p>
 
     {{-- Status box --}}
     <div id="status-box" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:1.2rem;margin-bottom:1.5rem;transition:border-color 0.3s;">
@@ -56,9 +62,38 @@
 @push('scripts')
 <script>
 const csrfToken   = document.querySelector('meta[name="csrf-token"]').content;
-const checkoutId  = '{{ $checkoutRequestId }}';
+const checkoutId  = @json($checkoutRequestId ?? null);
+const retryUrl    = @json($retryUrl);
+const initialError = @json($error ?? null);
+const DRAFT_KEY   = 'sauti_booking_draft_v1';
 let   attempts    = 0;
 const maxAttempts = 48;
+
+// Single "Try Again" button (no Home link)
+function tryAgainButton() {
+  return `
+    <a href="${retryUrl}"
+       style="display:inline-block;background:var(--yellow);color:#0A0A0A;
+              padding:0.55rem 1.4rem;border-radius:4px;font-weight:700;
+              text-decoration:none;font-size:0.88rem;">
+      Try Again
+    </a>`;
+}
+
+// Forget the saved form ONLY when the booking is really paid & confirmed
+function clearDraft() {
+  try { localStorage.removeItem(DRAFT_KEY); } catch (e) {}
+}
+
+function showFailure(message) {
+  document.getElementById('status-icon').textContent      = '❌';
+  document.getElementById('status-box').style.borderColor = 'rgba(229,90,90,0.5)';
+  document.getElementById('spinner').style.display        = 'none';
+  document.getElementById('attempt-text').textContent     = '';
+  document.getElementById('status-text').innerHTML        = `
+    ${message || 'Payment failed or cancelled.'}<br><br>
+    ${tryAgainButton()}`;
+}
 
 async function checkPayment() {
   attempts++;
@@ -71,6 +106,8 @@ async function checkPayment() {
     const data = await res.json();
 
     if (data.status === 'completed') {
+      clearDraft(); // ✅ payment succeeded — safe to forget the saved details
+
       document.getElementById('status-icon').textContent      = '✅';
       document.getElementById('status-text').textContent      = 'Payment confirmed! Redirecting…';
       document.getElementById('status-box').style.borderColor = 'rgba(52,199,123,0.5)';
@@ -88,18 +125,8 @@ async function checkPayment() {
     }
 
     if (data.status === 'failed') {
-      document.getElementById('status-icon').textContent      = '❌';
-      document.getElementById('status-box').style.borderColor = 'rgba(229,90,90,0.5)';
-      document.getElementById('spinner').style.display        = 'none';
-      document.getElementById('attempt-text').textContent     = '';
-      document.getElementById('status-text').innerHTML        = `
-        ${data.message || 'Payment failed or cancelled.'}<br><br>
-        <a href="{{ route('bookings.create') }}"
-           style="display:inline-block;background:var(--yellow);color:#0A0A0A;
-                  padding:0.55rem 1.4rem;border-radius:4px;font-weight:700;
-                  text-decoration:none;font-size:0.88rem;">
-          Try Again
-        </a>`;
+      // Draft is intentionally KEPT so Try Again doesn't lose the details
+      showFailure(data.message);
       return;
     }
 
@@ -144,16 +171,7 @@ async function checkPayment() {
           <strong style="color:var(--text);">0733 590 438</strong>
           with your M-Pesa receipt and we'll confirm manually.
         </span><br><br>
-        <a href="{{ route('bookings.create') }}"
-           style="display:inline-block;background:var(--yellow);color:#0A0A0A;
-                  padding:0.55rem 1.4rem;border-radius:4px;font-weight:700;
-                  text-decoration:none;font-size:0.88rem;margin-right:0.5rem;">
-          Try Again
-        </a>
-        <a href="{{ route('home') }}"
-           style="color:var(--gray);font-size:0.85rem;text-decoration:underline;">
-          Go Home
-        </a>`;
+        ${tryAgainButton()}`;
     }
 
   } catch(e) {
@@ -162,7 +180,13 @@ async function checkPayment() {
   }
 }
 
-// ── Wait 8 seconds before first poll — gives Safaricom time to process ─
-setTimeout(checkPayment, 8000);
+// ── Start ────────────────────────────────────────────────────────────
+if (initialError || !checkoutId) {
+  // The STK could not be sent (server error) — offer Try Again straight away
+  showFailure(initialError || 'Could not send the M-Pesa prompt.');
+} else {
+  // Wait 8 seconds before first poll — gives Safaricom time to process
+  setTimeout(checkPayment, 8000);
+}
 </script>
 @endpush

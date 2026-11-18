@@ -342,10 +342,10 @@ li:has(#recording-suite-row) { transition:background 0.2s; }
   </div>
 
   <div style="display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap;">
-    <button type="button" onclick="previewRecurring()"
-            class="btn-secondary" style="padding:0.5rem 1.2rem;font-size:0.82rem;">
-      👁 Preview Sessions
-    </button>
+    <button type="button" id="previewBtn" onclick="previewRecurring()"
+        class="btn-secondary" style="padding:0.5rem 1.2rem;font-size:0.82rem;">
+  👁 Preview Sessions
+</button>
     <span id="recurringCount" style="font-size:0.82rem;color:var(--gray);"></span>
   </div>
 
@@ -630,7 +630,7 @@ function toggleRecurring() {
   }
 }
 
-async function previewRecurring() {
+async function previewRecurring(silent = false) {
   const date      = document.getElementById('bookingDateInput').value;
   const room      = document.getElementById('roomSelect').value;
   const time      = document.getElementById('startTime').value;
@@ -639,11 +639,11 @@ async function previewRecurring() {
   const endDate   = document.getElementById('recurrenceEnd').value;
 
   if (!date || !room || !time || !duration || !endDate) {
-    alert('Please fill in date, room, start time, duration and repeat-until date first.');
+    if (!silent) alert('Please fill in date, room, start time, duration and repeat-until date first.');
     return;
   }
 
-  const btn = event.target;
+  const btn = document.getElementById('previewBtn');
   btn.textContent = 'Loading…';
   btn.disabled    = true;
 
@@ -778,11 +778,13 @@ document.addEventListener('keydown', function(e) {
   if (e.key === 'Escape') closeRecordingInfo();
 });
 
-// ── Remember booking details so a reload / failed payment never loses them ──
+// ══ Remember booking details (incl. recurring preview) across reloads ══
 const DRAFT_KEY = 'sauti_booking_draft_v1';
-const DRAFT_TTL = 6 * 60 * 60 * 1000; // keep for 6 hours
+const DRAFT_TTL = 6 * 60 * 60 * 1000; // 6 hours
+let restoringDraft = false;
 
 function saveDraft() {
+  if (restoringDraft) return;
   try {
     const g = id => document.getElementById(id).value;
     localStorage.setItem(DRAFT_KEY, JSON.stringify({
@@ -794,13 +796,16 @@ function saveDraft() {
       name:         document.querySelector('#bookingForm [name="name"]').value,
       phone:        g('phoneInput'),
       notes:        document.querySelector('#bookingForm [name="notes"]').value,
+      recurring:    recurringOn,
+      rec_freq:     g('recurrenceFrequency'),
+      rec_end:      g('recurrenceEnd'),
     }));
   } catch (e) {}
 }
 
 function restoreDraft() {
   try {
-    // If the server sent back old() values (validation error), those win.
+    // old() values from a validation error win over the saved draft
     if (document.getElementById('bookingDateInput').value) return;
 
     const raw = localStorage.getItem(DRAFT_KEY);
@@ -808,13 +813,13 @@ function restoreDraft() {
     const d = JSON.parse(raw);
     if (!d || Date.now() - d.t > DRAFT_TTL) { localStorage.removeItem(DRAFT_KEY); return; }
 
+    restoringDraft = true;
     const set = (id, v) => { if (v !== undefined && v !== null) document.getElementById(id).value = v; };
 
-    // Date → calendar
+    // Date → calendar (skip dates already in the past)
     if (d.booking_date) {
       const [y, m, day] = d.booking_date.split('-').map(Number);
       const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-      // ignore dates that are already in the past
       const today = new Date(); today.setHours(0,0,0,0);
       if (new Date(y, m - 1, day) >= today) {
         calYear = y; calMonth = m - 1;
@@ -831,7 +836,6 @@ function restoreDraft() {
     }
 
     set('startTime', d.start_time);
-    // if that slot got booked/passed in the meantime, filterTimeSlots disabled it
     const st = document.getElementById('startTime');
     if (st.value && st.options[st.selectedIndex]?.disabled) st.value = '';
 
@@ -839,28 +843,43 @@ function restoreDraft() {
     document.querySelector('#bookingForm [name="name"]').value  = d.name  || '';
     document.querySelector('#bookingForm [name="notes"]').value = d.notes || '';
     set('phoneInput', d.phone);
-
     computeAmount();
-  } catch (e) {}
+
+    // ── Recurring: reopen the panel, refill it, re-run the preview ──
+    if (d.recurring && !recurringOn) {
+      toggleRecurring();
+      set('recurrenceFrequency', d.rec_freq);
+      set('recurrenceEnd', d.rec_end);
+      restoringDraft = false;
+      previewRecurring(true); // silent: rebuilds table, total, form action, button label
+    }
+  } catch (e) {
+    console.error('restoreDraft', e);
+  } finally {
+    restoringDraft = false;
+  }
 }
 
-restoreDraft();
-
 // Save on every change
-['bookingDateInput','roomSelect','startTime','durationInput','phoneInput']
-  .forEach(id => {
-    const el = document.getElementById(id);
-    el.addEventListener('input', saveDraft);
-    el.addEventListener('change', saveDraft);
-  });
+['bookingDateInput','roomSelect','startTime','durationInput','phoneInput',
+ 'recurrenceFrequency','recurrenceEnd'].forEach(id => {
+  const el = document.getElementById(id);
+  el.addEventListener('input', saveDraft);
+  el.addEventListener('change', saveDraft);
+});
 document.querySelectorAll('#bookingForm [name="name"], #bookingForm [name="notes"]')
   .forEach(el => el.addEventListener('input', saveDraft));
 
-// Calendar clicks set the hidden date input programmatically, so save there too
+// Calendar clicks and the recurring toggle change state programmatically
 const _selectDate = selectDate;
 selectDate = function (d, m, y) { _selectDate(d, m, y); saveDraft(); };
 
-// Clear the draft ONLY when the booking was actually paid/confirmed
+const _toggleRecurring = toggleRecurring;
+toggleRecurring = function () { _toggleRecurring(); saveDraft(); };
+
+restoreDraft();
+
+// Clear the draft ONLY once a booking is actually confirmed
 @if(session('success'))
   try { localStorage.removeItem(DRAFT_KEY); } catch (e) {}
 @endif
